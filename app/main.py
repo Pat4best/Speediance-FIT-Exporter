@@ -15,12 +15,12 @@ from speediance_api import Client
 from fitwriter import write_fit
 from exercise_mapping import fit_exercise
 from windows_credentials import load_login, save_login, delete_login
-from preferences import export_folder, save_export_folder, saved_mappings, remember_names
+from preferences import export_folder, save_export_folder, saved_mappings, remember_names, load_login_client_type, save_login_client_type
 from mapping_editor import MappingEditor
 from exercise_discovery import discover_names
 
 APP = "Speediance FIT Exporter"
-VERSION = "0.1.4-beta"
+VERSION = "0.1.5-beta"
 DATA = Path(os.environ.get("LOCALAPPDATA", Path.home())) / "SpeedianceFITExporter"
 DATA.mkdir(parents=True, exist_ok=True)
 LOG = DATA / "diagnose.log"
@@ -55,6 +55,7 @@ class App(tk.Tk):
         self.events = queue.Queue()
         self.busy = False
         self.save_login_var = tk.BooleanVar(value=False)
+        self.login_client_type = tk.StringVar(value=load_login_client_type())
         self.export_dir = tk.StringVar(value=export_folder())
         self.build_ui()
         self._load_remembered_login()
@@ -88,9 +89,19 @@ class App(tk.Tk):
                         variable=self.save_login_var).pack(side="left")
         ttk.Button(login_options, text="Gespeicherte Anmeldung löschen",
                    command=self.clear_saved_login).pack(side="right")
-        ttk.Label(login, text="Optional: Passwort geschützt im Windows-Anmeldeinformationsmanager. "
-                  "Sitzungs-Token wird nie gespeichert.",
-                  foreground="#666").pack(anchor="w", pady=(5, 0))
+        slot_row = ttk.Frame(login)
+        slot_row.pack(fill="x", pady=(6, 0))
+        ttk.Label(slot_row, text="Anmeldetyp (Sitzungsplatz):").pack(side="left")
+        ttk.Combobox(slot_row, textvariable=self.login_client_type,
+                     values=["bike", "nano", "phone"], width=12,
+                     state="readonly").pack(side="left", padx=(8, 12))
+        ttk.Label(slot_row, text="bike empfohlen, wenn kein Speediance Bike vorhanden; "
+                  "sonst nano wählen.",
+                  foreground="#555").pack(side="left")
+        ttk.Label(login, text="Achtung: 'phone' meldet die iOS-App ab. "
+                  "'bike'/'nano' können ein Gerät desselben Typs abmelden. "
+                  "Passwortspeicherung optional im Windows-Anmeldeinformationsmanager.",
+                  foreground="#8a4800", wraplength=810).pack(anchor="w", pady=(6, 0))
 
         controls = ttk.LabelFrame(root, text="2 – Trainingshistorie", padding=10)
         controls.pack(fill="x", pady=12)
@@ -295,14 +306,26 @@ class App(tk.Tk):
             messagebox.showinfo("Anmeldung", "Bitte E-Mail und Passwort eingeben.")
             return
         region = self.region.get()
+        login_slot = self.login_client_type.get()
+        if login_slot == "phone" and not messagebox.askyesno(
+            "Achtung: iOS-App wird abgemeldet",
+            "Der Typ 'phone' verwendet den gleichen Speediance-Sitzungsplatz wie "
+            "deine iOS-App. Das kann deine iOS-App sofort abmelden. "
+            "Trotzdem mit 'phone' anmelden?"
+        ):
+            return
 
         def job():
-            client = Client(logger, region=region)
+            client = Client(logger, region=region, login_client_type=login_slot)
             client.login(email, password)
             return client
 
         def done(client):
             self.client = client
+            try:
+                save_login_client_type(login_slot)
+            except OSError as exc:
+                logger.warning("Saving login client setting failed: %s", type(exc).__name__)
             if self.save_login_var.get():
                 try:
                     save_login(email, password, region)

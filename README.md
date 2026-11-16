@@ -1,4 +1,4 @@
-# Speediance FIT Exporter (Beta 0.1.3)
+# Speediance FIT Exporter (Beta 0.1.5)
 
 Lokale Windows-10/11-Anwendung zum Abruf abgeschlossener Speediance-Trainingseinheiten aus dem eigenen Account und zum Export als Garmin-FIT-Aktivitäten. Die Speediance-API ist **inoffiziell**; der Login ist ohne echten Testaccount nicht verifiziert.
 
@@ -31,6 +31,21 @@ Die Zuordnung deckt noch nicht die gesamte Speediance-Übungsbibliothek ab. Garm
 - Geänderte Übungszuordnungen gelten **nur für neu erzeugte FIT-Dateien**, nicht für bereits importierte Garmin-Aktivitäten.
 
 Der Garmin-FIT-Katalog ist umfangreich: Die Auswahlliste enthält zunächst eine Auswahl verifizierter Übungen und lässt weitere Kategorien/IDs manuell zu. Ein falsch eingegebener Wert kann zu einer falschen Garmin-Anzeige führen.
+
+## Änderungen 0.1.4 / 0.1.5: Übungen direkt laden, iOS-App nicht mehr abmelden
+
+**0.1.4** – Im Bereich **Trainingshistorie** ein oder mehrere Workouts markieren und **Übungen zuordnen…** drücken. Die App lädt die Übungsnamen dann direkt aus Speediance und öffnet eine bereits befüllte Zuordnungsübersicht. Ein FIT-Export ist dafür nicht mehr erforderlich. Wenn keine Satzdaten geliefert werden, wird eine Fehlermeldung statt eines leeren Dialogs gezeigt.
+
+**0.1.5** – Speediance erlaubt offenbar nur eine gleichzeitig gültige Sitzung pro **Client-Typ**, nicht pro Account. Der bisherige Login als `SOFTWARE` belegte den Platz der iOS-/Android-App und meldete diese ab. Die Anmeldung erfolgt deshalb standardmäßig mit `App_type: BIKE` und `Versioncode: 1`. Nach dem Login greifen alle Leseaufrufe weiterhin mit `App_type: SOFTWARE` und `Versioncode: 41000` auf die Speediance-Cloud zu. Eine neue Option **Anmeldetyp (Sitzungsplatz)** bietet `bike`, `nano` oder `phone`; sie wird ohne Passwort und Token in den lokalen Einstellungen gespeichert.
+
+- **bike (Voreinstellung):** empfehlenswert, wenn du **kein Speediance Bike** benutzt.
+- **nano:** wenn du ein Speediance Bike besitzt, aber **kein Gym Nano**.
+- **phone:** kollidiert ausdrücklich mit der iOS-/Android-App; beim Login erscheint eine Warnung.
+- **Nicht angeboten:** `gym-monster`, um das eigentliche Trainingsgerät nicht versehentlich abzumelden.
+
+**Wichtig:** Auch ein Bike- oder Nano-Login belegt den jeweiligen Sitzungstyp; ein echtes Gerät desselben Typs oder ein anderes Tool auf diesem Platz kann dadurch abgemeldet werden. Die API ist inoffiziell, nicht dokumentiert und kann sich ändern. Erneute Anmeldung im iPhone ist einmalig nötig, wenn die vorherige Version dessen Sitzung bereits beendet hat.
+
+Dokumentation des beobachteten Speediance-Verhaltens: https://github.com/labatt/speediance-smartgym-workout-manager und https://github.com/labatt/speediance-mcp. Ein Test der neuen Sitzungstypen mit deinem Speediance-Account steht noch aus.
 
 ## Windows-Installer
 

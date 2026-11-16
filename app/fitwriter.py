@@ -65,7 +65,7 @@ class Encoder:
         return data + struct.pack("<H", crc(data))
 
 
-def write_fit(workout, destination):
+def write_fit(workout, destination, overrides=None):
     """Create Garmin FIT *activity* (strength training), not a workout plan.
 
     FIT field numbers/scaling follow Garmin FIT Profile: the original exporter
@@ -107,7 +107,7 @@ def write_fit(workout, destination):
     unknown_names = []
     for i, (exercise_name, s) in enumerate(sets):
         if exercise_name not in mapping_cache:
-            category, subtype = fit_exercise(exercise_name)
+            category, subtype = fit_exercise(exercise_name, overrides=overrides)
             if subtype is None:
                 subtype = len(unknown_names)
                 unknown_names.append(exercise_name)

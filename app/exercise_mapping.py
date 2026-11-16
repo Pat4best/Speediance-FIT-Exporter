@@ -20,7 +20,7 @@ EXERCISES = {
     "deadlift barbell": (8, 0),
     "deadlift": (8, 0),
     "romanian deadlift": (8, 23),
-    "rumänisches kreuzheben": (8, 23),
+    "rumanisches kreuzheben": (8, 23),
     "rumaenisches kreuzheben": (8, 23),
     "sumo deadlift": (8, 15),
     "sumo kreuzheben": (8, 15),

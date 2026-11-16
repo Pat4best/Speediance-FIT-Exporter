@@ -32,16 +32,20 @@ def decode(data):
             for _ in range(count):
                 field, width, kind = struct.unpack_from("<BBB", data, pos)
                 pos += 3
-                assert kind in SIZES and SIZES[kind][1] == width
-                fields.append((field, kind))
+                assert (kind == 7 and 0 < width <= 255) or (kind in SIZES and SIZES[kind][1] == width)
+                fields.append((field, kind, width))
             defs[local] = (global_num, fields)
         else:
             assert local in defs, "Missing FIT definition"
             num, fields = defs[local]
             values = {}
-            for field, kind in fields:
-                fmt, width = SIZES[kind]
-                values[field] = (kind, struct.unpack_from("<" + fmt, data, pos)[0])
+            for field, kind, width in fields:
+                if kind == 7:
+                    value = data[pos:pos + width].split(bytes([0]), 1)[0].decode("utf-8")
+                else:
+                    fmt, _ = SIZES[kind]
+                    value = struct.unpack_from("<" + fmt, data, pos)[0]
+                values[field] = (kind, value)
                 pos += width
             messages.append((num, values))
     assert pos == len(data) - 2
@@ -90,6 +94,31 @@ class ProfileTest(unittest.TestCase):
             self.assertEqual(sets[0][5], (2, 1))        # active
             self.assertEqual(sets[0][0], (0x86, 30000))  # duration
             self.assertEqual(sets[0][254][1] - sets[0][6][1], 30)
+
+    def test_set_exercise_category_and_subtype(self):
+        with TemporaryDirectory() as folder:
+            ms = decode(self.build(Path(folder) / "e.fit").read_bytes())
+            sets = [f for n, f in ms if n == 225]
+            self.assertEqual(len(sets), 2)
+            self.assertTrue(all(f[7] == (0x84, 8) for f in sets))
+            self.assertTrue(all(f[8] == (0x84, 0) for f in sets))
+
+    def test_unknown_names_are_not_bench_press(self):
+        with TemporaryDirectory() as folder:
+            p = write_fit({
+                "day": "2026-11-13", "duration_min": 5,
+                "exercises": [
+                    {"name": "Hohe Knie", "sets": [{"seconds": 30}]},
+                    {"name": "Skater", "sets": [{"seconds": 25}]},
+                    {"name": "Sternsprünge", "sets": [{"seconds": 30}]},
+                ]
+            }, Path(folder) / "warmup.fit")
+            ms = decode(p.read_bytes())
+            sets = [f for n, f in ms if n == 225]
+            self.assertEqual([(f[7][1], f[8][1]) for f in sets],
+                             [(65534, 0), (65534, 1), (2, 12)])
+            titles = [f for n, f in ms if n == 264]
+            self.assertEqual([f[2][1] for f in titles], ["Hohe Knie", "Skater"])
 
     def test_pounds_to_kg(self):
         with TemporaryDirectory() as folder:

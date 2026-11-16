@@ -223,7 +223,7 @@ class App(tk.Tk):
                     for ex in detailed["exercises"]:
                         if fit_exercise(ex.get("name"))[1] is None:
                             not_mapped.add(ex.get("name") or "Unbekannt")
-                    safe_name = re.sub(r"[^\\w -]+", "_", item["title"]).strip(" _")[:60] or "Training"
+                    safe_name = re.sub(r"[^\w -]+", "_", item["title"]).strip(" _")[:60] or "Training"
                     filename = "%s_%s_%s.fit" % (item["day"], safe_name, item["training_id"])
                     successes.append(write_fit(detailed, Path(folder) / filename))
                 except Exception as exc:
@@ -241,11 +241,11 @@ class App(tk.Tk):
                             (len(successes), failures, unknown_count))
             message = "%d FIT-Dateien gespeichert. Fehler: %d" % (len(successes), failures)
             if unknown_count:
-                message += ("\\n%d Übungsnamen haben keine eindeutige Garmin-Zuordnung. "
+                message += ("\n%d Übungsnamen haben keine eindeutige Garmin-Zuordnung. "
                             "Die Originalnamen sind als FIT-Zusatzinformation enthalten; "
                             "Garmin Connect kann sie dennoch als unbekannt anzeigen.") % unknown_count
             if missing_details:
-                message += ("\\n%d Trainingseinheiten ohne Speediance-Satzdaten "
+                message += ("\n%d Trainingseinheiten ohne Speediance-Satzdaten "
                             "wurden NICHT als leere FIT-Aktivitäten exportiert.") % missing_details
             messagebox.showinfo("Export", message)
 

@@ -140,16 +140,26 @@ class Client:
 
     def detail(self, workout):
         raw = None
-        for route in ROUTES.get(workout["type"], ALL_ROUTES):
+        # The calendar's type sometimes points at an empty detail endpoint.
+        # Safely try alternative read-only endpoints before declaring no details.
+        preferred = ROUTES.get(workout.get("type"), [])
+        routes = list(dict.fromkeys(preferred + ALL_ROUTES))
+        self.logger.info("Fetching session details using up to %d routes", len(routes))
+        for route in routes:
             raw = self.request(
                 "/api/app/trainingInfo/%s/%d" % (route, workout["training_id"]),
                 allow_error=True,
             )
             if raw:
                 break
-        if not isinstance(raw, list):
-            self.logger.warning("No strength-set details for workout type %s", workout["type"])
-            raw = []
+        if isinstance(raw, dict):
+            # Newer API variants may wrap the exercise list.
+            raw = next((raw[key] for key in ("list", "records", "data",
+                                           "trainingInfoDetailList", "exerciseList")
+                        if isinstance(raw.get(key), list)), [])
+        if not isinstance(raw, list) or not raw:
+            self.logger.warning("No exercise details after trying %d endpoints", len(routes))
+            raise APIError("Speediance hat für diese Trainingseinheit keine Übungsdetails geliefert")
         exercises = []
         for ex in raw:
             sets = []
@@ -167,6 +177,8 @@ class Client:
                     "weight": max(weights) if weights else 0,
                 })
             exercises.append({"name": ex.get("actionLibraryName") or "Übung", "sets": sets})
-        self.logger.info("Loaded %d exercises and %d sets",
-                         len(exercises), sum(len(e["sets"]) for e in exercises))
+        count = sum(len(e["sets"]) for e in exercises)
+        self.logger.info("Loaded %d exercises and %d sets", len(exercises), count)
+        if not count:
+            raise APIError("Speediance hat für dieses Training keine Sätze geliefert")
         return dict(workout, exercises=exercises)

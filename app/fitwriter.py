@@ -44,7 +44,7 @@ class Encoder:
         encoded = []
         for number, typ, value in fields:
             if typ == 7:  # FIT null-terminated UTF-8 string
-                raw = str(value).encode("utf-8")[:180] + b"\\x00"
+                raw = str(value).encode("utf-8")[:180] + bytes([0])
             else:
                 raw = struct.pack("<" + FORMATS[typ], value)
             if len(raw) > 255:

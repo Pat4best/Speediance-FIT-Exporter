@@ -24,6 +24,25 @@ def _save(path, payload):
     os.replace(temporary, path)
 
 
+
+
+# This is just a non-secret UI setting (never put access tokens here).
+CLIENT_TYPES = ("bike", "nano", "phone")
+
+
+def load_login_client_type(root=DEFAULT_ROOT):
+    value = _read(Path(root) / "settings.json").get("login_client_type")
+    return value if value in CLIENT_TYPES else "bike"
+
+
+def save_login_client_type(value, root=DEFAULT_ROOT):
+    if value not in CLIENT_TYPES:
+        raise ValueError("Unbekannter Speediance-Anmeldetyp")
+    settings = _read(Path(root) / "settings.json")
+    settings["login_client_type"] = value
+    _save(Path(root) / "settings.json", settings)
+
+
 def export_folder(root=DEFAULT_ROOT):
     value = _read(Path(root) / "settings.json").get("export_folder")
     return value if isinstance(value, str) else ""

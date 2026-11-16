@@ -14,9 +14,12 @@ from tkinter import filedialog, messagebox, ttk
 from speediance_api import Client
 from fitwriter import write_fit
 from exercise_mapping import fit_exercise
+from windows_credentials import load_login, save_login, delete_login
+from preferences import export_folder, save_export_folder, saved_mappings, remember_names
+from mapping_editor import MappingEditor
 
 APP = "Speediance FIT Exporter"
-VERSION = "0.1.2-beta"
+VERSION = "0.1.3-beta"
 DATA = Path(os.environ.get("LOCALAPPDATA", Path.home())) / "SpeedianceFITExporter"
 DATA.mkdir(parents=True, exist_ok=True)
 LOG = DATA / "diagnose.log"
@@ -50,7 +53,10 @@ class App(tk.Tk):
         self.sessions = []
         self.events = queue.Queue()
         self.busy = False
+        self.save_login_var = tk.BooleanVar(value=False)
+        self.export_dir = tk.StringVar(value=export_folder())
         self.build_ui()
+        self._load_remembered_login()
         self.after(100, self.poll)
 
     def build_ui(self):
@@ -75,8 +81,15 @@ class App(tk.Tk):
                      state="readonly", width=8).pack(side="left", padx=7)
         self.login_button = ttk.Button(line, text="Anmelden", command=self.login)
         self.login_button.pack(side="right")
-        ttk.Label(login, text="Inoffizielle Schnittstelle. Passwort und Token werden nicht gespeichert.",
-                  foreground="#666").pack(anchor="w", pady=(8, 0))
+        login_options = ttk.Frame(login)
+        login_options.pack(fill="x", pady=(8, 0))
+        ttk.Checkbutton(login_options, text="Anmeldedaten auf diesem PC speichern",
+                        variable=self.save_login_var).pack(side="left")
+        ttk.Button(login_options, text="Gespeicherte Anmeldung löschen",
+                   command=self.clear_saved_login).pack(side="right")
+        ttk.Label(login, text="Optional: Passwort geschützt im Windows-Anmeldeinformationsmanager. "
+                  "Sitzungs-Token wird nie gespeichert.",
+                  foreground="#666").pack(anchor="w", pady=(5, 0))
 
         controls = ttk.LabelFrame(root, text="2 – Trainingshistorie", padding=10)
         controls.pack(fill="x", pady=12)
@@ -107,11 +120,21 @@ class App(tk.Tk):
         scroller.pack(side="right", fill="y")
         self.table.configure(yscrollcommand=scroller.set)
 
+        folder_row = ttk.Frame(root)
+        folder_row.pack(fill="x", pady=(12, 0))
+        ttk.Label(folder_row, text="Exportordner: ").pack(side="left")
+        ttk.Label(folder_row, textvariable=self.export_dir, width=60).pack(
+            side="left", padx=(5, 8), fill="x", expand=True)
+        ttk.Button(folder_row, text="Ordner auswählen…",
+                   command=self.choose_export_dir).pack(side="right")
+
         actions = ttk.Frame(root)
         actions.pack(fill="x", pady=(12, 0))
         self.export_button = ttk.Button(actions, text="Ausgewählte als .fit exportieren",
                                          command=self.export)
         self.export_button.pack(side="left")
+        ttk.Button(actions, text="Übungen zuordnen…",
+                   command=self.manage_mappings).pack(side="left", padx=(10, 0))
         ttk.Button(actions, text="Diagnose-Ordner öffnen", command=self.open_log_dir).pack(
             side="right")
         ttk.Button(actions, text="Diagnoseprotokoll speichern…",
@@ -120,6 +143,54 @@ class App(tk.Tk):
         ttk.Label(root, textvariable=self.status).pack(anchor="w", pady=(12, 0))
         ttk.Label(root, text="FIT-Aktivitätsimport, kein Garmin-Trainingsplan. Fehlende Satzzeiten werden geschätzt.",
                   foreground="#666").pack(anchor="w", pady=(5, 0))
+
+    def _load_remembered_login(self):
+        try:
+            saved = load_login()
+        except Exception as exc:
+            logger.warning("Windows credentials read failed: %s", type(exc).__name__)
+            return
+        if saved:
+            email, password, region = saved
+            self.email.set(email)
+            self.password.set(password)
+            self.region.set(region)
+            self.save_login_var.set(True)
+            self.status.set("Gespeicherte Anmeldung geladen. Zum Verbinden auf Anmelden klicken.")
+
+    def clear_saved_login(self):
+        if not messagebox.askyesno("Anmeldedaten löschen",
+                                   "Gespeicherte Speediance-Zugangsdaten von diesem PC löschen?"):
+            return
+        try:
+            delete_login()
+        except Exception as exc:
+            logger.warning("Windows credential deletion failed: %s", type(exc).__name__)
+            messagebox.showerror("Anmeldedaten", "Löschen im Windows-Anmeldeinformationsmanager fehlgeschlagen.")
+            return
+        self.email.set("")
+        self.password.set("")
+        self.save_login_var.set(False)
+        self.status.set("Gespeicherte Anmeldung gelöscht. Bestehende Sitzung bleibt angemeldet.")
+
+    def choose_export_dir(self):
+        current = self.export_dir.get()
+        initial = current if current and Path(current).is_dir() else str(Path.home())
+        folder = filedialog.askdirectory(title="Exportordner auswählen", initialdir=initial)
+        if not folder:
+            return None
+        try:
+            save_export_folder(folder)
+        except (ValueError, OSError) as exc:
+            logger.warning("Export directory preferences failed: %s", type(exc).__name__)
+            messagebox.showerror("Exportordner", "Ordner konnte nicht gespeichert werden.")
+            return None
+        self.export_dir.set(folder)
+        self.status.set("Exportordner gespeichert.")
+        return folder
+
+    def manage_mappings(self):
+        MappingEditor(self)
 
     def run_job(self, action, callback):
         if self.busy:
@@ -172,6 +243,20 @@ class App(tk.Tk):
 
         def done(client):
             self.client = client
+            if self.save_login_var.get():
+                try:
+                    save_login(email, password, region)
+                except Exception as exc:
+                    logger.warning("Windows credential save failed: %s", type(exc).__name__)
+                    messagebox.showwarning(
+                        "Anmeldedaten",
+                        "Login erfolgreich, aber Speichern im Windows-Anmeldeinformationsmanager fehlgeschlagen."
+                    )
+            else:
+                try:
+                    delete_login()
+                except Exception as exc:
+                    logger.warning("Windows credential deletion failed: %s", type(exc).__name__)
             self.password.set("")
             self.status.set("Angemeldet. Jetzt Trainings laden.")
 
@@ -207,7 +292,9 @@ class App(tk.Tk):
         if not indices:
             messagebox.showinfo("Auswahl", "Bitte mindestens ein Workout markieren.")
             return
-        folder = filedialog.askdirectory(title="FIT-Exportordner auswählen")
+        folder = self.export_dir.get()
+        if not folder or not Path(folder).is_dir():
+            folder = self.choose_export_dir()
         if not folder:
             return
         selected = [self.sessions[i] for i in indices]
@@ -215,17 +302,21 @@ class App(tk.Tk):
         def job():
             successes = []
             failures = 0
+            overrides = saved_mappings()
             not_mapped = set()
             missing_details = 0
             for item in selected:
                 try:
                     detailed = self.client.detail(item)
-                    for ex in detailed["exercises"]:
-                        if fit_exercise(ex.get("name"))[1] is None:
-                            not_mapped.add(ex.get("name") or "Unbekannt")
+                    names = [ex.get("name") or "Unbekannt" for ex in detailed["exercises"]]
+                    remember_names(names)
+                    for name in names:
+                        if fit_exercise(name, overrides=overrides)[1] is None:
+                            not_mapped.add(name)
                     safe_name = re.sub(r"[^\w -]+", "_", item["title"]).strip(" _")[:60] or "Training"
                     filename = "%s_%s_%s.fit" % (item["day"], safe_name, item["training_id"])
-                    successes.append(write_fit(detailed, Path(folder) / filename))
+                    successes.append(write_fit(detailed, Path(folder) / filename,
+                                               overrides=overrides))
                 except Exception as exc:
                     logger.warning("FIT export failed: %s", type(exc).__name__)
                     from speediance_api import APIError
@@ -242,8 +333,8 @@ class App(tk.Tk):
             message = "%d FIT-Dateien gespeichert. Fehler: %d" % (len(successes), failures)
             if unknown_count:
                 message += ("\n%d Übungsnamen haben keine eindeutige Garmin-Zuordnung. "
-                            "Die Originalnamen sind als FIT-Zusatzinformation enthalten; "
-                            "Garmin Connect kann sie dennoch als unbekannt anzeigen.") % unknown_count
+                            "Die Originalnamen sind lokal für die Zuordnung gespeichert. "
+                            "Klicke auf 'Übungen zuordnen…' und exportiere erneut.") % unknown_count
             if missing_details:
                 message += ("\n%d Trainingseinheiten ohne Speediance-Satzdaten "
                             "wurden NICHT als leere FIT-Aktivitäten exportiert.") % missing_details

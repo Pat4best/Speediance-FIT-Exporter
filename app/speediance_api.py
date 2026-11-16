@@ -145,18 +145,25 @@ class Client:
         preferred = ROUTES.get(workout.get("type"), [])
         routes = list(dict.fromkeys(preferred + ALL_ROUTES))
         self.logger.info("Fetching session details using up to %d routes", len(routes))
+        raw = []
         for route in routes:
-            raw = self.request(
+            candidate = self.request(
                 "/api/app/trainingInfo/%s/%d" % (route, workout["training_id"]),
                 allow_error=True,
             )
-            if raw:
+            if isinstance(candidate, dict):
+                # Newer API variants may wrap the exercise list.
+                candidate = next((candidate[key] for key in (
+                    "list", "records", "data", "trainingInfoDetailList", "exerciseList")
+                    if isinstance(candidate.get(key), list)), [])
+            # A nonempty list can still be just a template with zero performed
+            # reps. Keep looking for the session's actual completed-set log.
+            if isinstance(candidate, list) and any(
+                isinstance(ex, dict) and ex.get("finishedReps") for ex in candidate
+            ):
+                raw = candidate
                 break
-        if isinstance(raw, dict):
-            # Newer API variants may wrap the exercise list.
-            raw = next((raw[key] for key in ("list", "records", "data",
-                                           "trainingInfoDetailList", "exerciseList")
-                        if isinstance(raw.get(key), list)), [])
+            self.logger.info("Detail endpoint returned no completed sets; trying fallback")
         if not isinstance(raw, list) or not raw:
             self.logger.warning("No exercise details after trying %d endpoints", len(routes))
             raise APIError("Speediance hat für diese Trainingseinheit keine Übungsdetails geliefert")

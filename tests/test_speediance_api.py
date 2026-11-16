@@ -31,6 +31,22 @@ class SpeedianceDetailTests(unittest.TestCase):
         self.assertEqual(data["exercises"][0]["sets"][0]["weight"], 35)
         self.assertGreater(len(calls), 1)
 
+    def test_fallback_when_endpoint_returns_empty_exercise_template(self):
+        client = Client(logging.getLogger("test"))
+        calls = []
+        def request(path, **kwargs):
+            calls.append(path)
+            if "courseTrainingInfoDetail" in path:
+                return [{"actionLibraryName": "Kreuzheben",
+                         "finishedReps": [{"finishedCount": 5,
+                                           "trainingInfoDetail": {"weights": [35]}}]}]
+            return [{"actionLibraryName": "Empty Template", "finishedReps": []}]
+        client.request = request
+        detail = client.detail(self.WORKOUT)
+        self.assertEqual(detail["exercises"][0]["name"], "Kreuzheben")
+        self.assertEqual(len(detail["exercises"][0]["sets"]), 1)
+        self.assertGreater(len(calls), 1)
+
     def test_no_silent_zero_set_export(self):
         client = Client(logging.getLogger("test"))
         client.request = lambda *args, **kwargs: []
@@ -41,7 +57,7 @@ class SpeedianceDetailTests(unittest.TestCase):
         client = Client(logging.getLogger("test"))
         client.request = lambda *args, **kwargs: [
             {"actionLibraryName": "Übung", "finishedReps": []}]
-        with self.assertRaisesRegex(APIError, "keine Sätze"):
+        with self.assertRaisesRegex(APIError, "keine Übungsdetails"):
             client.detail(self.WORKOUT)
 
 

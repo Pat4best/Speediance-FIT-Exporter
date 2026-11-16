@@ -16,6 +16,15 @@ ROUTES = {
     5: ["cttTrainingInfoDetail"],
 }
 ALL_ROUTES = ["aiCourseTrainingInfoDetail", "courseTrainingInfoDetail", "cttTrainingInfoDetail"]
+# Speediance keeps one session per client type. The phone app uses SOFTWARE.
+# BIKE/NANO work as separate slots, provided the user owns neither device.
+# References: labatt/speediance-mcp and labatt/speediance-smartgym-workout-manager.
+LOGIN_CLIENT_TYPES = {
+    "bike": ("BIKE", "1"),
+    "nano": ("NANO", "1"),
+    "phone": ("SOFTWARE", "41000"),
+}
+DEFAULT_LOGIN_CLIENT_TYPE = "bike"
 
 
 class APIError(Exception):
@@ -23,23 +32,34 @@ class APIError(Exception):
 
 
 class Client:
-    def __init__(self, logger, region="EU", device=1):
+    def __init__(self, logger, region="EU", device=1, login_client_type=DEFAULT_LOGIN_CLIENT_TYPE):
         self.logger = logger
         self.host = HOSTS[region]
         self.device = device
         self.token = None
         self.user_id = None
         self.unit = "kg"
+        if login_client_type not in LOGIN_CLIENT_TYPES:
+            raise ValueError("Unbekannter Speediance-Anmeldetyp")
+        self.login_client_type = login_client_type
 
-    def request(self, path, payload=None, allow_error=False):
+    def request(self, path, payload=None, allow_error=False, login_as=None):
         method = "POST" if payload is not None else "GET"
         data = json.dumps(payload).encode("utf-8") if payload is not None else None
+        # Only login endpoints use a dedicated client slot; regular
+        # read-only requests continue as SOFTWARE with that slot's token.
+        if login_as is not None and login_as not in LOGIN_CLIENT_TYPES:
+            raise ValueError("Unbekannter Speediance-Anmeldetyp")
+        app_type, version_code = (
+            LOGIN_CLIENT_TYPES[login_as] if login_as
+            else ("SOFTWARE", "41000")
+        )
         headers = {
             "Content-Type": "application/json",
             "User-Agent": "Dart/3.9 (dart:io)",
             "Timestamp": str(int(time.time() * 1000)),
-            "Versioncode": "40304",
-            "App_type": "SOFTWARE",
+            "Versioncode": version_code,
+            "App_type": app_type,
         }
         if self.token:
             headers["Token"] = self.token
@@ -81,9 +101,10 @@ class Client:
             raise APIError("Antwort ist kein gültiges API-JSON") from None
 
     def login(self, email, password):
+        self.logger.info("Speediance login using client type %s", self.login_client_type)
         verified = self.request("/api/app/v2/login/verifyIdentity", {
             "type": 2, "userIdentity": email
-        })
+        }, login_as=self.login_client_type)
         if not isinstance(verified, dict):
             raise APIError("Unbekannte Login-Prüfantwort")
         if verified.get("isExist") is False:
@@ -93,7 +114,7 @@ class Client:
 
         data = self.request("/api/app/v2/login/byPass", {
             "userIdentity": email, "password": password, "type": 2
-        })
+        }, login_as=self.login_client_type)
         if not isinstance(data, dict):
             raise APIError("Login-Antwort unvollständig")
         self.token = data.get("token")

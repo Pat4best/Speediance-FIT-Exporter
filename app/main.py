@@ -15,7 +15,7 @@ from speediance_api import Client
 from fitwriter import write_fit
 
 APP = "Speediance FIT Exporter"
-VERSION = "0.1.0-beta"
+VERSION = "0.1.1-beta"
 DATA = Path(os.environ.get("LOCALAPPDATA", Path.home())) / "SpeedianceFITExporter"
 DATA.mkdir(parents=True, exist_ok=True)
 LOG = DATA / "diagnose.log"

@@ -8,14 +8,16 @@ from preferences import observed_names, remember_names, saved_mappings, set_over
 
 
 class MappingEditor(tk.Toplevel):
-    def __init__(self, parent):
+    def __init__(self, parent, names=None):
         super().__init__(parent)
         self.title("Speediance-Übungen zuordnen")
         self.geometry("810x530")
         self.minsize(650, 440)
         self.transient(parent)
         self.grab_set()
-        self.names = observed_names()
+        # When a workout is selected, show its exercises immediately rather
+        # than only older names seen during previous FIT exports.
+        self.names = sorted(set(names)) if names is not None else observed_names()
         self.selected_name = None
         self._build()
         self.refresh()
@@ -27,7 +29,7 @@ class MappingEditor(tk.Toplevel):
                   font=("Segoe UI", 14, "bold")).pack(anchor="w", pady=(0, 8))
         ttk.Label(frame,
                   text="Wähle links eine erkannte Speediance-Übung und ordne ihr rechts die "
-                       "passende Garmin-Übung zu. Unbekannte Übungsnamen erscheinen nach dem Export.").pack(
+                       "passende Garmin-Übung zu. Die ausgewählten Trainings werden vor dem Öffnen abgefragt.").pack(
             anchor="w", pady=(0, 10))
 
         table_area = ttk.Frame(frame)

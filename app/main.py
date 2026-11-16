@@ -17,9 +17,10 @@ from exercise_mapping import fit_exercise
 from windows_credentials import load_login, save_login, delete_login
 from preferences import export_folder, save_export_folder, saved_mappings, remember_names
 from mapping_editor import MappingEditor
+from exercise_discovery import discover_names
 
 APP = "Speediance FIT Exporter"
-VERSION = "0.1.3-beta"
+VERSION = "0.1.4-beta"
 DATA = Path(os.environ.get("LOCALAPPDATA", Path.home())) / "SpeedianceFITExporter"
 DATA.mkdir(parents=True, exist_ok=True)
 LOG = DATA / "diagnose.log"
@@ -133,8 +134,9 @@ class App(tk.Tk):
         self.export_button = ttk.Button(actions, text="Ausgewählte als .fit exportieren",
                                          command=self.export)
         self.export_button.pack(side="left")
-        ttk.Button(actions, text="Übungen zuordnen…",
-                   command=self.manage_mappings).pack(side="left", padx=(10, 0))
+        self.mapping_button = ttk.Button(actions, text="Übungen zuordnen…",
+                                         command=self.manage_mappings)
+        self.mapping_button.pack(side="left", padx=(10, 0))
         ttk.Button(actions, text="Diagnose-Ordner öffnen", command=self.open_log_dir).pack(
             side="right")
         ttk.Button(actions, text="Diagnoseprotokoll speichern…",
@@ -190,14 +192,72 @@ class App(tk.Tk):
         return folder
 
     def manage_mappings(self):
-        MappingEditor(self)
+        """Load names from marked Speediance workouts before showing the editor.
+
+        If no workout is selected, show already discovered names. Never open a
+        silently empty editor when no exercises have been collected yet.
+        """
+        if self.busy:
+            return
+        indices = [int(i) for i in self.table.selection()]
+        if not indices:
+            from preferences import observed_names
+            if observed_names():
+                MappingEditor(self)
+            else:
+                messagebox.showinfo(
+                    "Übungen zuordnen",
+                    "Bitte zuerst ein oder mehrere Trainings in der Liste markieren. "
+                    "Danach lädt das Programm ihre Übungen direkt aus Speediance."
+                )
+            return
+        if self.client is None:
+            messagebox.showinfo("Speediance-Anmeldung", "Bitte zuerst anmelden.")
+            return
+        selected = [self.sessions[i] for i in indices]
+
+        def work():
+            return discover_names(self.client, selected, logger=logger)
+
+        def done(result):
+            names, failures = result
+            if names:
+                try:
+                    remember_names(names)
+                except OSError as exc:
+                    logger.warning("Could not save detected exercise names (%s)",
+                                   type(exc).__name__)
+                    messagebox.showwarning(
+                        "Übungsnamen", "Die Übungen wurden geladen, können aber "
+                        "möglicherweise nicht dauerhaft gespeichert werden."
+                    )
+                self.status.set("%d Übungen aus %d gewählten Training(s) geladen." %
+                                (len(names), len(selected)))
+                MappingEditor(self, names=names)
+                if failures:
+                    messagebox.showwarning(
+                        "Unvollständige Übungsliste",
+                        "%d gewählte Trainingseinheit(en) konnten nicht vollständig "
+                        "gelesen werden. Details stehen im Diagnoseprotokoll." % failures,
+                        parent=self,
+                    )
+            else:
+                self.status.set("Für die markierten Trainings wurden keine Übungen geladen.")
+                messagebox.showwarning(
+                    "Keine Übungen abrufbar",
+                    "Speediance hat für die markierten Trainings keine Übungen geliefert. "
+                    "Prüfe das Diagnoseprotokoll. Der Zuordnungsdialog wird deshalb "
+                    "nicht leer geöffnet."
+                )
+
+        self.run_job(work, done)
 
     def run_job(self, action, callback):
         if self.busy:
             return
         self.busy = True
         self.status.set("Arbeite …")
-        for button in (self.login_button, self.fetch_button, self.export_button):
+        for button in (self.login_button, self.fetch_button, self.export_button, self.mapping_button):
             button.state(["disabled"])
 
         def worker():
@@ -217,7 +277,7 @@ class App(tk.Tk):
             while True:
                 kind, callback, value = self.events.get_nowait()
                 self.busy = False
-                for button in (self.login_button, self.fetch_button, self.export_button):
+                for button in (self.login_button, self.fetch_button, self.export_button, self.mapping_button):
                     button.state(["!disabled"])
                 if kind == "ok":
                     callback(value)

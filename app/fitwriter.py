@@ -7,6 +7,8 @@ from datetime import datetime, timedelta, timezone
 from pathlib import Path
 import struct
 
+from exercise_mapping import fit_exercise, UNKNOWN
+
 FIT_EPOCH = datetime(1989, 12, 31, tzinfo=timezone.utc)
 FORMATS = {0: "B", 2: "B", 0x84: "H", 0x86: "I", 0x8C: "I"}
 
@@ -39,12 +41,22 @@ class Encoder:
     def mesg(self, global_num, fields):
         loc = self.local % 16
         self.local += 1
-        self.buf.extend(bytes([0x40 | loc, 0, 0]) + struct.pack("<H", global_num) + bytes([len(fields)]))
-        for number, typ, _ in fields:
-            self.buf.extend(bytes([number, struct.calcsize("<" + FORMATS[typ]), typ]))
+        encoded = []
+        for number, typ, value in fields:
+            if typ == 7:  # FIT null-terminated UTF-8 string
+                raw = str(value).encode("utf-8")[:180] + b"\\x00"
+            else:
+                raw = struct.pack("<" + FORMATS[typ], value)
+            if len(raw) > 255:
+                raise ValueError("FIT field too long")
+            encoded.append((number, typ, raw))
+        self.buf.extend(bytes([0x40 | loc, 0, 0]) + struct.pack("<H", global_num)
+                        + bytes([len(encoded)]))
+        for number, typ, raw in encoded:
+            self.buf.extend(bytes([number, len(raw), typ]))
         self.buf.append(loc)
-        for _, typ, value in fields:
-            self.buf.extend(struct.pack("<" + FORMATS[typ], value))
+        for _, _, raw in encoded:
+            self.buf.extend(raw)
 
     def result(self):
         header = struct.pack("<BBHI4s", 14, 0x20, 0x0100, len(self.buf), b".FIT")
@@ -67,8 +79,8 @@ def write_fit(workout, destination):
     except ValueError:
         end = None
 
-    sets = [s for ex in workout.get("exercises", []) for s in ex.get("sets", [])]
-    measured_seconds = sum(max(0, int(float(s.get("seconds") or 0))) for s in sets)
+    sets = [(ex.get("name") or "Übung", item) for ex in workout.get("exercises", []) for item in ex.get("sets", [])]
+    measured_seconds = sum(max(0, int(float(s.get("seconds") or 0))) for _, s in sets)
     configured_seconds = int(float(workout.get("duration_min") or 0) * 60)
     duration = max(60, configured_seconds, measured_seconds, len(sets))
     start = end - timedelta(seconds=duration) if end else datetime.fromisoformat(day + "T12:00:00")
@@ -91,7 +103,16 @@ def write_fit(workout, destination):
 
     cursor = start
     remaining = duration
-    for i, s in enumerate(sets):
+    mapping_cache = {}
+    unknown_names = []
+    for i, (exercise_name, s) in enumerate(sets):
+        if exercise_name not in mapping_cache:
+            category, subtype = fit_exercise(exercise_name)
+            if subtype is None:
+                subtype = len(unknown_names)
+                unknown_names.append(exercise_name)
+            mapping_cache[exercise_name] = category, subtype
+        category, subtype = mapping_cache[exercise_name]
         provided = max(0, int(float(s.get("seconds") or 0)))
         budget = max(1, remaining - (len(sets) - i - 1))
         seconds = max(1, min(budget, provided if provided else 30))
@@ -108,9 +129,19 @@ def write_fit(workout, destination):
             (4, 0x84, weight_scaled),         # weight; FIT scale 16 kg
             (5, 2, 1),                       # set_type ACTIVE
             (6, 0x86, set_start),
-            (7, 0x84, 0),                    # exercise category UNKNOWN
+            (7, 0x84, category),              # Garmin exercise_category
+            (8, 0x84, subtype),               # Garmin category_subtype
         ])
 
+    # Optional custom titles for movements absent from the Garmin enum.
+    # Garmin Connect may ignore these titles in imported ACTIVITY files.
+    for index, exercise_name in enumerate(unknown_names):
+        enc.mesg(264, [
+            (254, 0x84, index),
+            (0, 0x84, UNKNOWN),
+            (1, 0x84, index),
+            (2, 7, exercise_name),
+        ])
     enc.mesg(20, [(253, 0x86, end_ts), (5, 0x86, 0)])
     enc.mesg(21, [(253, 0x86, end_ts), (0, 0, 0), (1, 0, 4)])  # STOP_ALL
     enc.mesg(19, [

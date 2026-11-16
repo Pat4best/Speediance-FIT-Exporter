@@ -13,9 +13,10 @@ from tkinter import filedialog, messagebox, ttk
 
 from speediance_api import Client
 from fitwriter import write_fit
+from exercise_mapping import fit_exercise
 
 APP = "Speediance FIT Exporter"
-VERSION = "0.1.1-beta"
+VERSION = "0.1.2-beta"
 DATA = Path(os.environ.get("LOCALAPPDATA", Path.home())) / "SpeedianceFITExporter"
 DATA.mkdir(parents=True, exist_ok=True)
 LOG = DATA / "diagnose.log"
@@ -214,22 +215,39 @@ class App(tk.Tk):
         def job():
             successes = []
             failures = 0
+            not_mapped = set()
+            missing_details = 0
             for item in selected:
                 try:
                     detailed = self.client.detail(item)
-                    safe_name = re.sub(r"[^\w -]+", "_", item["title"]).strip(" _")[:60] or "Training"
+                    for ex in detailed["exercises"]:
+                        if fit_exercise(ex.get("name"))[1] is None:
+                            not_mapped.add(ex.get("name") or "Unbekannt")
+                    safe_name = re.sub(r"[^\\w -]+", "_", item["title"]).strip(" _")[:60] or "Training"
                     filename = "%s_%s_%s.fit" % (item["day"], safe_name, item["training_id"])
                     successes.append(write_fit(detailed, Path(folder) / filename))
                 except Exception as exc:
                     logger.warning("FIT export failed: %s", type(exc).__name__)
+                    from speediance_api import APIError
+                    if isinstance(exc, APIError) and ("keine Übungsdetails" in str(exc)
+                                                     or "keine Sätze" in str(exc)):
+                        missing_details += 1
                     failures += 1
-            return successes, failures
+            return successes, failures, len(not_mapped), missing_details
 
         def done(result):
-            successes, failures = result
-            self.status.set("%d exportiert, %d Fehler." % (len(successes), failures))
-            messagebox.showinfo("Export", "%d FIT-Dateien gespeichert. Fehler: %d" % (
-                len(successes), failures))
+            successes, failures, unknown_count, missing_details = result
+            self.status.set("%d exportiert, %d Fehler, %d ohne Garmin-Zuordnung." %
+                            (len(successes), failures, unknown_count))
+            message = "%d FIT-Dateien gespeichert. Fehler: %d" % (len(successes), failures)
+            if unknown_count:
+                message += ("\\n%d Übungsnamen haben keine eindeutige Garmin-Zuordnung. "
+                            "Die Originalnamen sind als FIT-Zusatzinformation enthalten; "
+                            "Garmin Connect kann sie dennoch als unbekannt anzeigen.") % unknown_count
+            if missing_details:
+                message += ("\\n%d Trainingseinheiten ohne Speediance-Satzdaten "
+                            "wurden NICHT als leere FIT-Aktivitäten exportiert.") % missing_details
+            messagebox.showinfo("Export", message)
 
         self.run_job(job, done)
 

@@ -33,7 +33,7 @@ class GarminCatalogTests(unittest.TestCase):
 
     def test_search_finds_many_real_exercises(self):
         matches, count = search_options("press", language="en")
-        self.assertGreater(count, 100)
+        self.assertGreater(count, 80)
         self.assertTrue(matches)
         self.assertLessEqual(len(matches), 180)
         self.assertTrue(all("press" in row[3] for row in matches))

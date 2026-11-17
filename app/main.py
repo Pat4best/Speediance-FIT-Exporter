@@ -15,14 +15,14 @@ from speediance_api import Client
 from fitwriter import write_fit
 from exercise_mapping import fit_exercise
 from windows_credentials import load_login, save_login, delete_login
-from preferences import export_folder, save_export_folder, saved_mappings, remember_names, load_login_client_type, save_login_client_type
+from preferences import export_folder, save_export_folder, saved_mappings, saved_weight_multipliers, remember_names, load_login_client_type, save_login_client_type
 from mapping_editor import MappingEditor
 from exercise_discovery import discover_names
 from preferences import load_language, save_language
 from i18n import translate
 
 APP = "Speediance FIT Exporter"
-VERSION = "0.1.12-beta"
+VERSION = "0.1.13-beta"
 DATA = Path(os.environ.get("LOCALAPPDATA", Path.home())) / "SpeedianceFITExporter"
 DATA.mkdir(parents=True, exist_ok=True)
 LOG = DATA / "diagnose.log"
@@ -476,6 +476,9 @@ class App(tk.Tk):
             successes = []
             failures = 0
             overrides = saved_mappings()
+            weight_overrides = saved_weight_multipliers()
+            hr_samples = 0
+            doubled_sets = 0
             not_mapped = set()
             missing_details = 0
             for item in selected:
@@ -488,8 +491,15 @@ class App(tk.Tk):
                             not_mapped.add(name)
                     safe_name = re.sub(r"[^\w -]+", "_", item["title"]).strip(" _")[:60] or "Training"
                     filename = "%s_%s_%s.fit" % (item["day"], safe_name, item["training_id"])
+                    from weight_handling import weight_multiplier_for
+                    for ex in detailed["exercises"]:
+                        factor = weight_multiplier_for(ex.get("name") or "", weight_overrides)
+                        doubled_sets += sum(1 for set_data in ex.get("sets", [])
+                                            if factor == 2 and not set_data.get("weight_already_total"))
+                    hr_samples += len(detailed.get("heart_rate_points") or [])
                     successes.append(write_fit(detailed, Path(folder) / filename,
-                                               overrides=overrides))
+                                               overrides=overrides,
+                                               weight_overrides=weight_overrides))
                 except Exception as exc:
                     logger.warning("FIT export failed: %s", type(exc).__name__)
                     from speediance_api import APIError
@@ -497,10 +507,10 @@ class App(tk.Tk):
                                                      or "keine Sätze" in str(exc)):
                         missing_details += 1
                     failures += 1
-            return successes, failures, len(not_mapped), missing_details
+            return successes, failures, len(not_mapped), missing_details, hr_samples, doubled_sets
 
         def done(result):
-            successes, failures, unknown_count, missing_details = result
+            successes, failures, unknown_count, missing_details, hr_samples, doubled_sets = result
             self.status.set(self.tr("%d exportiert, %d Fehler, %d ohne Garmin-Zuordnung.") %
                             (len(successes), failures, unknown_count))
             message = self.tr("%d FIT-Dateien gespeichert. Fehler: %d") % (len(successes), failures)
@@ -508,6 +518,9 @@ class App(tk.Tk):
                 message += self.tr("\n%d Übungsnamen haben keine eindeutige Garmin-Zuordnung. Die Originalnamen sind lokal für die Zuordnung gespeichert. Klicke auf 'Übungen zuordnen…' und exportiere erneut.") % unknown_count
             if missing_details:
                 message += self.tr("\n%d Trainingseinheiten ohne Speediance-Satzdaten wurden NICHT als leere FIT-Aktivitäten exportiert.") % missing_details
+            message += self.tr("\nHerzfrequenz: %d echte Messpunkte übertragen.") % hr_samples
+            if doubled_sets:
+                message += self.tr("\nGewichte: %d Sätze von pro Griff auf Gesamtgewicht umgerechnet.") % doubled_sets
             messagebox.showinfo(self.tr("Export"), message)
 
         self.run_job(job, done)

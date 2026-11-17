@@ -1,4 +1,4 @@
-# Speediance FIT Exporter (Beta 0.1.18)
+# Speediance FIT Exporter (Beta 0.1.19)
 
 Lokale Windows-10/11-Anwendung zum Abruf abgeschlossener Speediance-Trainingseinheiten aus dem eigenen Account und zum Export als Garmin-FIT-Aktivitäten. Die Speediance-API ist **inoffiziell**; der Login ist ohne echten Testaccount nicht verifiziert.
 
@@ -198,6 +198,56 @@ Bisher hat der Exporter in den aufgezeichneten `trainingInfoDetail.weights` bzw.
 Die Gewichte stammen weiterhin direkt aus den Speediance-*Trainingsaufzeichnungen*, nicht aus einem GM-Manager-Trainingsplan. Ein neuer, datensparsamer Diagnoseeintrag `Weight source of completed sets:` nennt je Training nur die Anzahl der gewählten Datenquellen (`both_sides`, `single_side`, `generic_telemetry`, `missing`) und wie viele Satzserien unterschiedliche Gewichte enthalten – keine Gewichtszahlen oder persönliche Identifikatoren. Falls für einen Satz ausschließlich generische `weights`-Telemetrie verfügbar ist, weist das Protokoll auf diese Unsicherheit hin.
 
 **Einschränkung:** Ohne das Original der privaten Speediance-API-Antwort lässt sich nicht sicher bestätigen, ob die korrigierten **20 kg** tatsächlich in den gespeicherten Satzserien vorhanden sind. Die Fehlerursache `max()` ist behoben, aber die reale Aufzeichnung muss den neuen Wert liefern. Nach einem Export mit 0.1.18 bitte den konkret betroffenen Satz in Garmin Connect kontrollieren und bei unverändert 26 kg die neue Diagnosezeile teilen; dann muss die Quelle genauer untersucht werden.
+
+## 0.1.19 – offizielle Garmin Personal API und individuell wählbare Datenpriorität
+
+**Voraussetzungen:** eigener Garmin Connect Personal API-Schlüssel und eine bereits
+vorhandene, zeitlich passende Garmin-Connect-Aktivität. Den Schlüssel in Garmin Connect
+unter [Personal API](https://connect.garmin.com/app/settings/personalApiToken) erzeugen.
+**Keinen Schlüssel in Chat, Issue, Log oder GitHub hochladen.**
+
+1. Mit Speediance anmelden, Trainingseinheiten laden und **genau eine** Einheit auswählen.
+2. **„Mit Garmin abgleichen…“** öffnen und den persönlichen API-Schlüssel **lokal**
+   eingeben. Optional kann Windows Credential Manager den Schlüssel geschützt für
+   spätere Aufrufe speichern. Der Schlüssel wird weder in `settings.json` noch
+   in `diagnose.log` gespeichert.
+3. Für sechs getrennte Felder Garmin oder Speediance als bevorzugte Quelle einstellen:
+   **Herzfrequenzkurve**, **Durchschnittspuls**, **Maximalpuls**, **Kalorien**,
+   **Trainingsbeginn** und **Trainingsdauer**. Die Auswahl (ohne Geheimnisse)
+   bleibt lokal gespeichert. Standard: jeweils Garmin.
+4. **„Garmin-Aktivitäten suchen“** ruft die offizielle **schreibgeschützte**
+   Personal API auf. Nur ausreichend passende Trainingszeiten und -dauern werden
+   angeboten; bei mehreren Kandidaten die richtige Garmin-Aktivität auswählen.
+5. **„Zusammengeführte FIT speichern…“** liest die ausgewählte ursprüngliche
+   Garmin-FIT-Datei und erstellt eine **neue lokale** FIT-Aktivität mit den
+   Speediance-Übungen, Wiederholungen, Satzgewichten und den nach gewählter
+   Priorität kombinierten Messwerten.
+
+**Messwertkonflikte:** Pro FIT-Zeitpunkt gewinnt der gewählte Herzfrequenzverlauf.
+Eine echte Messung aus der anderen Quelle kann eine fehlende Sekunde ergänzen.
+Gemessene Pulswerte werden nicht erfunden. Für die Zusammenführung werden die
+absoluten Aufnahmezeiten verwendet, und die Speediance-Sätze bleiben auf ihrer
+ursprünglichen Zeitachse, selbst wenn der Garmin-Startzeitpunkt früher liegt.
+Falls die gewählte Trainingsdauer Aufnahmen ausschließt, wird die Zahl
+ausgeschlossener Zeitpunkte angezeigt. Die Geräteidentität wird nicht
+irreführend in die neue FIT-Datei kopiert.
+
+**Wichtig:** Die offizielle Garmin Personal API ist **nur zum Lesen**.
+Es gibt dort keinen unterstützten Schreibendpunkt, um eine in Garmin Connect
+bestehende Aktivität zu verändern. Deshalb wird **niemals** automatisch etwas
+in Garmin Connect gelöscht, ersetzt oder hochgeladen. Eine später manuell
+hochgeladene zusammengeführte FIT-Datei kann als **zweite Aktivität** erscheinen.
+Bitte vor dem Import prüfen, ob du die ursprüngliche Garmin-Aktivität behalten
+möchtest. Der bisherige direkte Speediance→FIT-Export funktioniert unabhängig
+davon weiter. Der zusammengeführte Export übernimmt keine vollständigen
+Garmin-GPS-Tracks, Sensor-Rohfelder oder alle proprietären Metadaten, sondern
+nur die oben genannten Messwerte.
+
+Die Umsetzung nutzt die dokumentierten Endpunkte für den API-Key-Tokenaustausch,
+die Aktivitätssuche und den **originalen ZIP/FIT-Download**, ohne private
+Garmin-Endpunkte oder Passwort-Automation. Automatisierte Tests verwenden
+fiktive Token und FIT-Aufzeichnungen. Der tatsächliche Datenabruf muss noch
+mit einem lokal eingegebenen persönlichen Schlüssel im Zielkonto geprüft werden.
 
 ## Windows-Installer
 

@@ -33,6 +33,21 @@ EN = {
     "Garmin-originalbasierte FIT-Datei gespeichert:\n%s\n\nSpeediance-Krafttrainingssätze: %d\nGarmin-Geräteinformationen erhalten: %d\nZusätzliche HF-Records: %d\nAußerhalb der gewählten Dauer: %d\n\nGarmin Connect wurde NICHT verändert.":
         "Garmin-based FIT file saved:\n%s\n\nSpeediance strength sets: %d\nGarmin device information preserved: %d\nAdded HR records: %d\nOutside selected duration: %d\n\nGarmin Connect was NOT modified.",
     "Mit Garmin abgleichen…": "Match with Garmin…",
+    "GM-Manager-JSON wählen…": "Choose GM Manager JSON…",
+    "GM-Manager-Trainingsdatei wählen": "Choose GM Manager workout export",
+    "GM-Manager-Import": "GM Manager import",
+    "Absolvierte Sätze bestätigen": "Confirm completed sets",
+    "Optional: GM-Manager-Export wählen und als absolviert bestätigen.":
+        "Optional: choose a GM Manager export and confirm the values were performed.",
+    "Bestätigt: %d Übungen, %d Sätze (davon %d Kraft).":
+        "Confirmed: %d exercises, %d sets (%d strength).",
+    "Übungsdaten aus Speediance; alternativ bestätigte Werte aus GM Manager. Satzzeitpunkte ohne Aufzeichnung sind geschätzt.":
+        "Exercises from Speediance, or user-confirmed values from GM Manager. Set timestamps without a recording are estimated.",
+    "Satzquelle: vom Nutzer bestätigter GM-Manager-Export. Satzzeitpunkte sind geschätzt.\\n\\n":
+        "Set source: user-confirmed GM Manager export. Set times are estimated.\\n\\n",
+    "Dieser GM-Manager-Export enthält Vorgaben, keine nachgewiesenen Satz-Aufzeichnungen. Bestätigst du, dass die angegebenen Wiederholungen und Gewichte bei der ausgewählten Trainingseinheit tatsächlich absolviert wurden?\\n\\nÜbungen: %d, Kraftsätze: %d, Zeitsätze: %d, Gewichte: %s.\\nGarmin-Zeiten und Sensoraufzeichnung bleiben erhalten; Satzzeitpunkte werden geschätzt und die Gewichte nicht verdoppelt.":
+        "This GM Manager export contains prescriptions, not verified set recordings. Do you confirm that the stated repetitions and weights were actually performed in the selected session?\\n\\nExercises: %d, strength sets: %d, timed sets: %d, weights: %s.\\nGarmin activity times and sensor data stay intact; set times are estimated and weights are not doubled.",
+
     "Speediance-Datensatz prüfen…": "Inspect Speediance response…",
     "API-Diagnose: %d normale Detail-Abfragen (%d mit Sätzen), %d recordId-Abfragen (%d mit Sätzen).":
         "API diagnosis: %d normal detail requests (%d with sets), %d recordId requests (%d with sets).",

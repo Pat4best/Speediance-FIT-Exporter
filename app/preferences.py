@@ -43,6 +43,24 @@ def save_login_client_type(value, root=DEFAULT_ROOT):
     _save(Path(root) / "settings.json", settings)
 
 
+
+
+LANGUAGES = ("de", "en")
+
+
+def load_language(root=DEFAULT_ROOT):
+    value = _read(Path(root) / "settings.json").get("language")
+    return value if value in LANGUAGES else "de"
+
+
+def save_language(language, root=DEFAULT_ROOT):
+    if language not in LANGUAGES:
+        raise ValueError("Unsupported language")
+    settings = _read(Path(root) / "settings.json")
+    settings["language"] = language
+    _save(Path(root) / "settings.json", settings)
+
+
 def export_folder(root=DEFAULT_ROOT):
     value = _read(Path(root) / "settings.json").get("export_folder")
     return value if isinstance(value, str) else ""

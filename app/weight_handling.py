@@ -37,3 +37,50 @@ def weight_multiplier_for(exercise_name, overrides=None):
             raise ValueError("Weight multiplier must be 1 or 2")
         return value
     return suggested_weight_multiplier(exercise_name)
+
+
+
+def _series(raw):
+    """Read either a list or the comma-separated telemetry form."""
+    if raw is None:
+        return []
+    if isinstance(raw, str):
+        raw = raw.split(",")
+    if not isinstance(raw, (tuple, list)):
+        raw = [raw]
+    result = []
+    for value in raw:
+        try:
+            number = float(value)
+        except (TypeError, ValueError):
+            continue
+        if 0 <= number < 10000:
+            result.append(number)
+    return result
+
+
+def set_weight(detail, raw_set=None):
+    """Return (weight_in_account_units, already_total_or_unilateral).
+
+    When Speediance provides per-side telemetry, it is more reliable than
+    'weights' (which can be derived force telemetry). Sum max-left+max-right
+    for dual cables, do NOT apply an additional name-based x2.
+    """
+    detail = detail if isinstance(detail, dict) else {}
+    raw_set = raw_set if isinstance(raw_set, dict) else {}
+    left = _series(detail.get("leftWeights"))
+    right = _series(detail.get("rightWeights"))
+    try:
+        side = int(raw_set.get("leftRight", detail.get("leftRight", 0)) or 0)
+    except (ValueError, TypeError):
+        side = 0
+    if side == 1 and left:
+        return max(left), True
+    if side == 2 and right:
+        return max(right), True
+    if left and right:
+        return max(left) + max(right), True
+    if left or right:
+        return max(left or right), side in (1, 2)
+    fallback = _series(detail.get("weights"))
+    return (max(fallback) if fallback else 0), False

@@ -10,6 +10,8 @@ from garmin_catalog import (
 )
 from exercise_mapping import fit_exercise
 from i18n import translate
+from garmin_localization import german_exercise_name, english_exercise_name
+from preferences import load_catalog_language, save_catalog_language, load_language, save_language
 
 
 class GarminCatalogTests(unittest.TestCase):
@@ -64,6 +66,44 @@ class GarminCatalogTests(unittest.TestCase):
             translate("en", "IDs manuell bearbeiten (Expertenmodus)"),
             "Edit IDs manually (expert mode)",
         )
+
+    def test_german_display_keeps_garmin_english_original(self):
+        de = {(cat, sub): title for title, cat, sub, _ in all_options("de")}
+        en = {(cat, sub): title for title, cat, sub, _ in all_options("en")}
+        self.assertEqual(len(de), FULL_CATALOG_COUNT)
+        self.assertEqual(len(en), FULL_CATALOG_COUNT)
+        self.assertIn("Langhantel-Bankdrücken", de[(0, 1)])
+        self.assertIn("Barbell Bench Press", de[(0, 1)])
+        self.assertIn("Barbell Bench Press", en[(0, 1)])
+        self.assertNotIn("Langhantel-Bankdrücken", en[(0, 1)])
+        self.assertEqual(german_exercise_name("BICEPS_STRETCH", 31, 31),
+                         "Bizepsdehnung")
+        self.assertEqual(english_exercise_name("BICEPS_STRETCH"),
+                         "Biceps Stretch")
+
+    def test_bilingual_search_in_both_display_modes(self):
+        for locale in ("de", "en"):
+            for query in ("Bankdrücken", "bench press", "Langhantel", "barbell"):
+                result, count = search_options(query, language=locale)
+                self.assertGreater(count, 0, msg="%s / %s" % (locale, query))
+            german, _ = search_options("Kreuzheben", category=8, language=locale)
+            english, _ = search_options("deadlift", category=8, language=locale)
+            self.assertTrue(any((c, sub) == (8, 0) for _, c, sub, _ in german))
+            self.assertTrue(any((c, sub) == (8, 0) for _, c, sub, _ in english))
+
+    def test_catalog_language_is_remembered_without_changing_app_language(self):
+        from tempfile import TemporaryDirectory
+        with TemporaryDirectory() as td:
+            root = Path(td)
+            save_language("de", root)
+            self.assertEqual(load_catalog_language(root), "de")
+            save_catalog_language("en", root)
+            self.assertEqual(load_catalog_language(root), "en")
+            self.assertEqual(load_language(root), "de")
+            save_catalog_language("de", root)
+            self.assertEqual(load_catalog_language(root), "de")
+            with self.assertRaises(ValueError):
+                save_catalog_language("fr", root)
 
     def test_code_lookup_is_not_unknown_bench_press(self):
         # Category 0 is bench press. Unknown is 65534.

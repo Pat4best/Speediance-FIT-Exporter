@@ -91,6 +91,8 @@ EN = {
     "Datum": "Date",
     "Bitte gültigen Zeitraum bis zu 3 Jahren wählen.":
         "Enter valid dates covering no more than three years.",
+    "%d abgeschlossene Workouts geladen (Historie: +%d; frühere API: +%d; anderer Gerätetyp: +%d).":
+        "Loaded %d completed workouts (history: +%d; older API: +%d; other device: +%d).",
     "%d abgeschlossene Workouts geladen (frühere API: +%d; anderer Gerätetyp: +%d).":
         "Loaded %d completed workouts (older API: +%d; other device type: +%d).",
     "%d abgeschlossene Workouts geladen.": "Loaded %d completed workouts.",

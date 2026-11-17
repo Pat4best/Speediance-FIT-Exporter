@@ -221,10 +221,14 @@ class App(tk.Tk):
         self.mapping_button = ttk.Button(actions, text=self.tr("Übungen zuordnen…"),
                                          command=self.manage_mappings)
         self.mapping_button.pack(side="left", padx=(10, 0))
-        ttk.Button(actions, text=self.tr("Diagnose-Ordner öffnen"), command=self.open_log_dir).pack(
-            side="right")
-        ttk.Button(actions, text=self.tr("Diagnoseprotokoll speichern…"),
-                   command=self.save_log).pack(side="right", padx=8)
+        diagnostics = ttk.Frame(footer)
+        diagnostics.pack(fill="x", pady=(4, 0))
+        ttk.Button(diagnostics, text=self.tr("Diagnose anzeigen…"),
+                   command=self.show_log).pack(side="left")
+        ttk.Button(diagnostics, text=self.tr("Diagnoseprotokoll speichern…"),
+                   command=self.save_log).pack(side="left", padx=(8, 0))
+        ttk.Button(diagnostics, text=self.tr("Diagnose-Ordner öffnen"),
+                   command=self.open_log_dir).pack(side="left", padx=(8, 0))
         self.status = tk.StringVar(value=self.tr("Bereit. Bitte anmelden."))
         ttk.Label(footer, textvariable=self.status).pack(anchor="w", pady=(6, 0))
         ttk.Label(footer, text=self.tr("FIT-Aktivitätsimport, kein Garmin-Trainingsplan. Fehlende Satzzeiten werden geschätzt."),
@@ -502,6 +506,41 @@ class App(tk.Tk):
             messagebox.showinfo(self.tr("Export"), message)
 
         self.run_job(job, done)
+
+    def show_log(self):
+        """Display and copy the shareable local diagnostic log, offline."""
+        handler.flush()
+        try:
+            contents = LOG.read_text(encoding="utf-8", errors="replace")
+        except OSError:
+            contents = self.tr("Keine Diagnosedaten vorhanden.")
+        dialog = tk.Toplevel(self)
+        dialog.title(self.tr("Diagnoseprotokoll – lokal"))
+        dialog.geometry("%dx%d" % (
+            min(920, self.winfo_screenwidth() - 70),
+            min(600, self.winfo_screenheight() - 120)
+        ))
+        area = ttk.Frame(dialog, padding=10)
+        area.pack(fill="both", expand=True)
+        ttk.Label(
+            area, text=self.tr("Das Diagnoseprotokoll enthält technische Metadaten. Bitte vor dem Teilen prüfen."),
+            wraplength=850
+        ).pack(anchor="w", pady=(0, 8))
+        field = scrolledtext.ScrolledText(area, wrap="none", font=("Consolas", 9))
+        field.pack(fill="both", expand=True)
+        field.insert("1.0", contents)
+        field.configure(state="disabled")
+        buttons = ttk.Frame(area)
+        buttons.pack(fill="x", pady=(8, 0))
+        def copy_text():
+            dialog.clipboard_clear()
+            dialog.clipboard_append(contents)
+            dialog.update()
+            messagebox.showinfo(self.tr("Diagnose"),
+                                self.tr("In Zwischenablage kopiert."), parent=dialog)
+        ttk.Button(buttons, text=self.tr("Kopieren"), command=copy_text).pack(side="left")
+        ttk.Button(buttons, text=self.tr("Schließen"),
+                   command=dialog.destroy).pack(side="right")
 
     def save_log(self):
         target = filedialog.asksaveasfilename(

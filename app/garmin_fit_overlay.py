@@ -453,6 +453,8 @@ def overlay_garmin_fit(original, speediance, destination, priorities=None,
         "output_bytes": len(result),
         "file_id_changed": True,
         "speediance_source": ("saved_fit" if speediance_fit_bytes is not None
+                             else "gm_manager_confirmed"
+                             if speediance.get("_set_source") == "gm_manager_confirmed"
                              else "cloud"),
     })
     return target, meta

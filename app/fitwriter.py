@@ -104,11 +104,11 @@ def write_fit(workout, destination, overrides=None, weight_overrides=None):
     sensor = workout.get("hr_sensor")
     if isinstance(sensor, dict) and isinstance(sensor.get("name"), str):
         name = sensor["name"].strip()
-        if name and sensor.get("verified_from") == "speediance_metadata":
+        if name and sensor.get("verified_from") in ("speediance_metadata", "user_confirmed"):
             device_fields = [
                 (253, 0x86, start_ts),
                 (0, 2, 1),            # index of the external sensor
-                (19, 7, name),        # device_info.descriptor
+                (19, 7, sensor.get("descriptor") or name),  # device_info.descriptor
                 (27, 7, name),        # device_info.product_name
             ]
             if sensor.get("manufacturer") == "Garmin":
@@ -159,6 +159,9 @@ def write_fit(workout, destination, overrides=None, weight_overrides=None):
             (8, 0x84, subtype),               # Garmin category_subtype
         ]))
 
+    # Values remain measured; if the API reports only an array of BPM without
+    # timestamps, the parser estimates their time locations over the activity.
+    # The export UI explicitly warns about this approximation.
     # The Speediance watch API returns actual per-second samples with elapsed
     # seconds; 0/invalid values are discarded upstream, never interpolated.
     heart_points = workout.get("heart_rate_points") or []

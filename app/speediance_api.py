@@ -118,9 +118,20 @@ class Client:
         if verified.get("hasPwd") is False:
             raise APIError("Für den Account ist kein Passwort eingerichtet")
 
-        data = self.request("/api/app/v2/login/byPass", {
-            "userIdentity": email, "password": password, "type": 2
-        }, login_as=self.login_client_type)
+        try:
+            data = self.request("/api/app/v2/login/byPass", {
+                "userIdentity": email, "password": password, "type": 2
+            }, login_as=self.login_client_type)
+        except APIError as exc:
+            # API code 96, among others, is a server-side login rejection.
+            # The detailed code is already recorded by request() in the
+            # sanitized log; show a clear, non-technical message to users.
+            if "Speediance API-Fehler" in str(exc):
+                raise APIError(
+                    "Anmeldung fehlgeschlagen. Bitte E-Mail-Adresse, Passwort "
+                    "und Region (EU/Global) überprüfen."
+                ) from None
+            raise
         if not isinstance(data, dict):
             raise APIError("Login-Antwort unvollständig")
         self.token = data.get("token")

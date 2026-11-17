@@ -161,6 +161,7 @@ class GMHistoryImportTests(unittest.TestCase):
             out, metadata = overlay_garmin_fit(
                 original, speediance, Path(tmp) / "merged.fit",
                 dict(DEFAULT_PRIORITIES, duration="speediance"),
+                expected_set_count=recorded["set_count"],
             )
             result = out.read_bytes()
         self.assertEqual(metadata["speediance_source"], "gm_manager_history_csv")

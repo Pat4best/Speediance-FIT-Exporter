@@ -172,6 +172,19 @@ EN = {
         "Select a Speediance exercise on the left and a Garmin exercise on the right, then click Map. The mapping appears on the left immediately.",
     "← Zuordnen": "← Map",
     "Gewicht": "Weight",
+    "HF-Sensor (optional):": "HR sensor (optional):",
+    "HF-Sensor": "HR sensor",
+    "Nur verwenden, wenn Speediance den Sensornamen nicht liefert (z. B. HRM600:654360).":
+        "Use only if Speediance does not report the sensor name (e.g. HRM600:654360).",
+    "HF-Sensor konnte nicht gespeichert werden.":
+        "Could not save HR sensor name.",
+    "Bitte einen gültigen Sensor-Namen eingeben.":
+        "Please enter a valid sensor name.",
+    "\nHF-Sensorinformationen in %d FIT-Datei(en) hinterlegt.":
+        "\nHR sensor details added to %d FIT file(s).",
+    "\nBei %d Aktivität(en) wurden die HF-Zeitpunkte gleichmäßig über die Trainingsdauer verteilt.":
+        "\nFor %d activity/activities, HR sample times were evenly distributed over the workout duration.",
+
     "Speediance-Gewicht pro Griff (×2 für Garmin)":
         "Speediance weight per handle (×2 for Garmin)",
     "Bei echten Links-/Rechts-Messwerten werden beide Seiten addiert. Die ×2-Regel gilt nur für einzelne Speediance-Gewichtsangaben.":

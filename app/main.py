@@ -138,58 +138,56 @@ class App(tk.Tk):
         ttk.Label(body, text=self.tr("Workouts aus deinem Speediance-Account als Garmin-FIT exportieren")).pack(
             anchor="w", pady=(2, 8))
 
-        login = ttk.LabelFrame(body, text="1 – Speediance-Anmeldung", padding=8)
+        login = ttk.LabelFrame(body, text=self.tr("1 – Speediance-Anmeldung"), padding=8)
         login.pack(fill="x")
         line = ttk.Frame(login)
         line.pack(fill="x")
-        ttk.Label(line, text="E-Mail").pack(side="left")
+        ttk.Label(line, text=self.tr("E-Mail")).pack(side="left")
         self.email = tk.StringVar()
         ttk.Entry(line, textvariable=self.email, width=28).pack(side="left", padx=(5, 12))
-        ttk.Label(line, text="Passwort").pack(side="left")
+        ttk.Label(line, text=self.tr("Passwort")).pack(side="left")
         self.password = tk.StringVar()
         ttk.Entry(line, textvariable=self.password, show="●", width=22).pack(side="left", padx=5)
         self.region = tk.StringVar(value="EU")
         ttk.Combobox(line, textvariable=self.region, values=["EU", "Global"],
                      state="readonly", width=8).pack(side="left", padx=7)
-        self.login_button = ttk.Button(line, text="Anmelden", command=self.login)
+        self.login_button = ttk.Button(line, text=self.tr("Anmelden"), command=self.login)
         self.login_button.pack(side="right")
-        self.login_status = tk.StringVar(value="● Nicht angemeldet")
+        self.login_status = tk.StringVar(value=self.tr("● Nicht angemeldet"))
         self.login_status_label = ttk.Label(
             login, textvariable=self.login_status, foreground="#9a3412"
         )
         self.login_status_label.pack(anchor="w", pady=(4, 0))
         login_options = ttk.Frame(login)
         login_options.pack(fill="x", pady=(8, 0))
-        ttk.Checkbutton(login_options, text="Anmeldedaten auf diesem PC speichern",
+        ttk.Checkbutton(login_options, text=self.tr("Anmeldedaten auf diesem PC speichern"),
                         variable=self.save_login_var).pack(side="left")
-        ttk.Button(login_options, text="Gespeicherte Anmeldung löschen",
+        ttk.Button(login_options, text=self.tr("Gespeicherte Anmeldung löschen"),
                    command=self.clear_saved_login).pack(side="right")
         slot_row = ttk.Frame(login)
         slot_row.pack(fill="x", pady=(6, 0))
-        ttk.Label(slot_row, text="Anmeldetyp (Sitzungsplatz):").pack(side="left")
+        ttk.Label(slot_row, text=self.tr("Anmeldetyp (Sitzungsplatz):")).pack(side="left")
         ttk.Combobox(slot_row, textvariable=self.login_client_type,
                      values=["bike", "nano", "phone"], width=12,
                      state="readonly").pack(side="left", padx=(8, 12))
-        ttk.Label(slot_row, text="bike empfohlen, wenn kein Speediance Bike vorhanden; "
-                  "sonst nano wählen.",
+        ttk.Label(slot_row, text=self.tr("bike empfohlen, wenn kein Speediance Bike vorhanden; sonst nano wählen."),
                   foreground="#555").pack(side="left")
-        ttk.Label(login, text="Achtung: 'phone' meldet die iOS-App ab. "
-                  "'bike'/'nano' können ein Gerät desselben Typs abmelden. "
-                  "Passwortspeicherung optional im Windows-Anmeldeinformationsmanager.",
+        ttk.Label(login, text=self.tr(
+                  "Achtung: 'phone' meldet die iOS-App ab. 'bike'/'nano' können ein Gerät desselben Typs abmelden. Passwortspeicherung optional im Windows-Anmeldeinformationsmanager."),
                   foreground="#8a4800", wraplength=810).pack(anchor="w", pady=(6, 0))
 
-        controls = ttk.LabelFrame(body, text="2 – Trainingshistorie", padding=8)
+        controls = ttk.LabelFrame(body, text=self.tr("2 – Trainingshistorie"), padding=8)
         controls.pack(fill="x", pady=6)
         row = ttk.Frame(controls)
         row.pack(fill="x")
         today = date.today()
         self.from_date = tk.StringVar(value=(today - timedelta(days=60)).isoformat())
         self.to_date = tk.StringVar(value=today.isoformat())
-        ttk.Label(row, text="Von (JJJJ-MM-TT)").pack(side="left")
+        ttk.Label(row, text=self.tr("Von (JJJJ-MM-TT)")).pack(side="left")
         ttk.Entry(row, textvariable=self.from_date, width=13).pack(side="left", padx=6)
-        ttk.Label(row, text="Bis").pack(side="left")
+        ttk.Label(row, text=self.tr("Bis")).pack(side="left")
         ttk.Entry(row, textvariable=self.to_date, width=13).pack(side="left", padx=6)
-        self.fetch_button = ttk.Button(row, text="Trainings laden", command=self.fetch)
+        self.fetch_button = ttk.Button(row, text=self.tr("Trainings laden"), command=self.fetch)
         self.fetch_button.pack(side="left", padx=10)
 
         content = ttk.Frame(body)
@@ -197,8 +195,8 @@ class App(tk.Tk):
         self.table = ttk.Treeview(content, columns=("day", "title", "minutes", "kcal"),
                                   show="headings", selectmode="extended")
         for col, title, width in [
-            ("day", "Datum", 105), ("title", "Training", 380),
-            ("minutes", "Minuten", 85), ("kcal", "kcal", 70)
+            ("day", self.tr("Datum"), 105), ("title", self.tr("Training"), 380),
+            ("minutes", self.tr("Minuten"), 85), (self.tr("kcal"), "kcal", 70)
         ]:
             self.table.heading(col, text=title)
             self.table.column(col, width=width, stretch=col == "title")
@@ -209,27 +207,27 @@ class App(tk.Tk):
 
         folder_row = ttk.Frame(footer)
         folder_row.pack(fill="x", pady=(6, 0))
-        ttk.Label(folder_row, text="Exportordner: ").pack(side="left")
+        ttk.Label(folder_row, text=self.tr("Exportordner: ")).pack(side="left")
         ttk.Label(folder_row, textvariable=self.export_dir, width=60).pack(
             side="left", padx=(5, 8), fill="x", expand=True)
-        ttk.Button(folder_row, text="Ordner auswählen…",
+        ttk.Button(folder_row, text=self.tr("Ordner auswählen…"),
                    command=self.choose_export_dir).pack(side="right")
 
         actions = ttk.Frame(footer)
         actions.pack(fill="x", pady=(6, 0))
-        self.export_button = ttk.Button(actions, text="Ausgewählte als .fit exportieren",
+        self.export_button = ttk.Button(actions, text=self.tr("Ausgewählte als .fit exportieren"),
                                          command=self.export)
         self.export_button.pack(side="left")
-        self.mapping_button = ttk.Button(actions, text="Übungen zuordnen…",
+        self.mapping_button = ttk.Button(actions, text=self.tr("Übungen zuordnen…"),
                                          command=self.manage_mappings)
         self.mapping_button.pack(side="left", padx=(10, 0))
-        ttk.Button(actions, text="Diagnose-Ordner öffnen", command=self.open_log_dir).pack(
+        ttk.Button(actions, text=self.tr("Diagnose-Ordner öffnen"), command=self.open_log_dir).pack(
             side="right")
-        ttk.Button(actions, text="Diagnoseprotokoll speichern…",
+        ttk.Button(actions, text=self.tr("Diagnoseprotokoll speichern…"),
                    command=self.save_log).pack(side="right", padx=8)
-        self.status = tk.StringVar(value="Bereit. Bitte anmelden.")
+        self.status = tk.StringVar(value=self.tr("Bereit. Bitte anmelden."))
         ttk.Label(footer, textvariable=self.status).pack(anchor="w", pady=(6, 0))
-        ttk.Label(footer, text="FIT-Aktivitätsimport, kein Garmin-Trainingsplan. Fehlende Satzzeiten werden geschätzt.",
+        ttk.Label(footer, text=self.tr("FIT-Aktivitätsimport, kein Garmin-Trainingsplan. Fehlende Satzzeiten werden geschätzt."),
                   foreground="#666").pack(anchor="w", pady=(2, 0))
 
     def _load_remembered_login(self):

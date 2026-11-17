@@ -1,4 +1,4 @@
-# Speediance FIT Exporter (Beta 0.1.9)
+# Speediance FIT Exporter (Beta 0.1.10)
 
 Lokale Windows-10/11-Anwendung zum Abruf abgeschlossener Speediance-Trainingseinheiten aus dem eigenen Account und zum Export als Garmin-FIT-Aktivitäten. Die Speediance-API ist **inoffiziell**; der Login ist ohne echten Testaccount nicht verifiziert.
 
@@ -83,6 +83,25 @@ Die detailbezogenen Typen unterscheiden sich zwischen Kalender und Historie. Das
 **Prüfung:** Für den Fall „GMC · Mon 16 Nov“ ist der Unterschied der Quellen durch lokale Tests nachgestellt. Ob dein echter Account die Session in der Historie liefert, wird erst beim tatsächlichen Abruf mit deinem Login sichtbar.
 
 Quelle zum API-Verhalten: https://github.com/labatt/speediance-mcp
+
+## 0.1.10 – Garmin-Übungen durchsuchen und zuordnen
+
+Die bisherige Garmin-Liste umfasste nur 25 häufige Übungen. Die neue Variante enthält **1.838 Garmin-FIT-Übungseinträge aus allen 51 Übungsnamen-Enums** des Garmin FIT Java SDK (Profil **21.221.0**, 2026). Die englischen Originalbezeichnungen und die beiden unveränderten numerischen FIT-Codes sind für die Zuordnung entscheidend. Die vollständige Liste ist bereits in der Anwendung enthalten und benötigt dafür keine Internetverbindung.
+
+**So funktioniert die Zuordnung:**
+1. In der Trainingsliste ein oder mehrere Speediance-Trainings markieren → **Übungen zuordnen…**.
+2. Links einen Speediance-Übungsnamen wählen. Optional links über das Textfeld filtern.
+3. Rechts einen Begriff eingeben (z. B. `bench`, `fly`, `stretch` oder `lat`). Die Liste zeigt live Treffer aus dem vollständigen Katalog. Über **Kategorie filtern** lässt sich die Suche weiter eingrenzen. Ohne Suchbegriff erscheinen zunächst maximal 180 Einträge – nicht die gesamte Liste auf einmal.
+4. Garmin-Übung anklicken. Das Programm setzt automatisch **Kategorie** und **ID / Unterkategorie**.
+5. **Zuordnung speichern**, danach das Training neu als FIT exportieren.
+
+**Was bedeuten die Zahlen?** In jeder Garmin-FIT-`set`-Nachricht kodiert Feld 7 die `exercise_category` (Übungsfamilie), Feld 8 die `category_subtype` (Übungsvariante). Beispielsweise ist `8 / 0` Langhantel-Kreuzheben und `0 / 1` Langhantel-Bankdrücken. `65534` bedeutet „unbekannt“ und darf nicht mit `0` (Bankdrücken) verwechselt werden.
+
+Die numerischen Felder sind standardmäßig nur lesbar. Über **IDs manuell bearbeiten (Expertenmodus)** kann man sie in Ausnahmefällen selbst setzen. Das ist normalerweise nicht notwendig und kann bei falschen Zahlen zu falsch benannten Übungen in Garmin Connect führen.
+
+Zusätzlich werden jetzt Speediance-Übungen, deren **englischer Name exakt und eindeutig** einem Garmin-FIT-Namen entspricht (z. B. `Barbell Bench Press` oder `Biceps Stretch`), automatisch zugeordnet. Individuell gespeicherte Zuordnungen haben Vorrang. Die übrigen Speediance-Namen bleiben zunächst unbekannt, bis sie bewusst einer Garmin-Übung zugeordnet werden. Nicht jede Speediance-Bewegung existiert als eigene Garmin-Unterkategorie; Garmin Connect kann außerdem eigene Anzeige-/Importregeln verwenden.
+
+Der Datenkatalog basiert auf öffentlich verfügbaren Garmin-FIT-SDK-Enumwerten und enthält keine vom SDK kopierte Programmlogik. Quelle: https://github.com/garmin/fit-java-sdk (siehe dort geltende FIT-Protokoll-Lizenz).
 
 ## Windows-Installer
 

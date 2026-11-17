@@ -161,6 +161,25 @@ EN = {
         "The Speediance sign-in response was incomplete.",
     "Login: Token oder Nutzer-ID fehlt":
         "Sign-in failed: missing session credentials.",
+    "Speediance-Übung links auswählen, rechts im vollständigen Garmin-Katalog suchen und die Zuordnung speichern.":
+        "Select a Speediance exercise on the left, search the full Garmin catalog on the right, then save the mapping.",
+    "Speediance-Übungen": "Speediance exercises",
+    "Speediance-Namen filtern:": "Filter Speediance names:",
+    "Garmin-Katalog durchsuchen": "Search Garmin exercise catalog",
+    "Suchbegriff (z. B. bench, fly, lat, stretch):":
+        "Search term (e.g., bench, fly, lat, stretch):",
+    "Kategorie filtern:": "Filter by category:",
+    "Alle Kategorien": "All categories",
+    "Noch keine Garmin-Übung gewählt": "No Garmin exercise selected",
+    "Kategorie (FIT):": "Category (FIT):",
+    "ID / Unterkategorie (FIT):": "ID / subtype (FIT):",
+    "IDs manuell bearbeiten (Expertenmodus)": "Edit IDs manually (expert mode)",
+    "Kategorie = Übungsfamilie (8 = Kreuzheben); ID = Variante in dieser Familie (0 = Langhantel-Kreuzheben). Die Auswahl setzt beide Zahlen automatisch.":
+        "Category = exercise family (8 = Deadlift); ID = variation in that family (0 = Barbell Deadlift). Selecting a Garmin exercise fills both numbers automatically.",
+    "%d von %d Treffern angezeigt (Gesamtkatalog: %d).":
+        "Showing %d of %d matches (full catalog: %d).",
+    "Bitte eine Garmin-Übung auswählen oder gültige FIT-IDs im Expertenmodus eingeben.":
+        "Select a Garmin exercise or enter valid FIT IDs in expert mode.",
     "Verbindung fehlgeschlagen (URLError)":
         "Could not connect to Speediance (network error).",
 

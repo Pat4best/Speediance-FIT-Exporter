@@ -84,12 +84,15 @@ def category_title(category, language="de"):
 
 @lru_cache(maxsize=2)
 def all_options(language="de"):
-    """Return (display_label, category_id, subtype_id, search_haystack).
+    """Return only the official Garmin enum values, plus German search aliases.
 
-    Every Garmin enum option is retained, plus the 25 familiar translated
-    shortcuts. Duplicate display labels are disambiguated by category.
+    Every Garmin enum option is retained exactly once. The previous 25
+    shortcuts are search keywords, not duplicate picker rows.
     """
     from i18n import translate
+    aliases = {}
+    for friendly, pair in GARMIN_OPTIONS.items():
+        aliases.setdefault(pair, []).extend((friendly, translate(language, friendly)))
     results = []
     existing_labels = set()
     for category_key, exercise_key, cat, sub in FULL_CATALOG:
@@ -99,17 +102,9 @@ def all_options(language="de"):
         if display in existing_labels:
             display += " (%d/%d)" % (cat, sub)
         existing_labels.add(display)
-        haystack = normalize_query("%s %s %s %s" % (
-            english_name, cname, category_title(cat, "de"), category_key))
-        results.append((display, cat, sub, haystack))
-    for friendly, (cat, sub) in GARMIN_OPTIONS.items():
-        name = translate(language, friendly)
-        display = "%s  ·  %s" % (name, category_title(cat, language))
-        if display in existing_labels:
-            continue
-        existing_labels.add(display)
-        haystack = normalize_query("%s %s %s %s" % (
-            name, friendly, category_title(cat, language), category_title(cat, "en")))
+        haystack = normalize_query("%s %s %s %s %s" % (
+            english_name, cname, category_title(cat, "de"),
+            category_key, " ".join(aliases.get((cat, sub), []))))
         results.append((display, cat, sub, haystack))
     return tuple(sorted(results, key=lambda x: (normalize_query(x[0]), x[1], x[2])))
 

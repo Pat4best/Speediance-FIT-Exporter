@@ -1,4 +1,4 @@
-# Speediance FIT Exporter (Beta 0.1.5)
+# Speediance FIT Exporter (Beta 0.1.6)
 
 Lokale Windows-10/11-Anwendung zum Abruf abgeschlossener Speediance-Trainingseinheiten aus dem eigenen Account und zum Export als Garmin-FIT-Aktivitäten. Die Speediance-API ist **inoffiziell**; der Login ist ohne echten Testaccount nicht verifiziert.
 
@@ -46,6 +46,16 @@ Der Garmin-FIT-Katalog ist umfangreich: Die Auswahlliste enthält zunächst eine
 **Wichtig:** Auch ein Bike- oder Nano-Login belegt den jeweiligen Sitzungstyp; ein echtes Gerät desselben Typs oder ein anderes Tool auf diesem Platz kann dadurch abgemeldet werden. Die API ist inoffiziell, nicht dokumentiert und kann sich ändern. Erneute Anmeldung im iPhone ist einmalig nötig, wenn die vorherige Version dessen Sitzung bereits beendet hat.
 
 Dokumentation des beobachteten Speediance-Verhaltens: https://github.com/labatt/speediance-smartgym-workout-manager und https://github.com/labatt/speediance-mcp. Ein Test der neuen Sitzungstypen mit deinem Speediance-Account steht noch aus.
+
+## 0.1.6 – Fehlende Trainings aus dem Monatskalender wiederfinden
+
+Wenn eine abgeschlossene Einheit im Speediance-Kalender erscheint, im Exporter aber fehlt, kann die Kalenderansicht je nach API-Versionsnummer unterschiedliche Ergebnisse liefern. Frühere Builds lasen die Speediance-Kalenderdaten mit `Versioncode=40304`, spätere mit `41000`.
+
+Ab 0.1.6 fragt der Exporter die Monate **lesend** mit beiden bekannten API-Versionen ab, führt Aktivitäten über die Speediance-`trainingId` zusammen und zeigt in der Statusleiste an, wie viele Einheiten nur über die frühere Kalenderansicht wiedergefunden wurden. Es werden **keine zusätzlichen Logins** ausgeführt und der frei gewählte `bike`- bzw. `nano`-Sitzungsplatz bleibt bestehen. Geplante, nicht abgeschlossene Einheiten werden weiterhin ausgeschlossen.
+
+Für Diagnosezwecke protokolliert die Anwendung ausschließlich anonyme Zählwerte (Monat, Kalender-Version, Anzahl Tage, hinzugefügte und übersprungene Einträge), niemals Trainingstitel, Trainings-IDs, Passwörter oder Sitzungstokens. So kann man bei weiteren Differenzen zum Speediance-Kalender prüfen, welche API-Ansicht Einheiten nicht zurückgibt.
+
+**Wichtig:** Der konkrete Fall „GMC · Mon 16 Nov“ am 16.11.2026 ist mit einer lokalen Testantwort nachgestellt; ob Speediance unter dem echten Account dieselben Daten über die alte Version liefert, muss noch an einem echten Abruf geprüft werden. Falls das Training weiterhin fehlt, bitte das neue anonymisierte Diagnoseprotokoll bereitstellen.
 
 ## Windows-Installer
 

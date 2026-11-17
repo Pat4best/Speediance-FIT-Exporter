@@ -181,17 +181,3 @@ def set_weight_multiplier(name, multiplier, root=DEFAULT_ROOT):
     names.add(name.strip())
     data["names"] = sorted(names)
     _save(path, data)
-
-
-def load_hr_sensor_name(root=DEFAULT_ROOT):
-    """User-confirmed sensor display name, not a verified hardware identity."""
-    value = _read(Path(root) / "settings.json").get("hr_sensor_name")
-    return value if isinstance(value, str) and len(value) <= 80 else ""
-
-
-def save_hr_sensor_name(name, root=DEFAULT_ROOT):
-    if not isinstance(name, str) or len(name) > 80 or "\n" in name:
-        raise ValueError("Ungültiger Herzfrequenz-Sensorname")
-    settings = _read(Path(root) / "settings.json")
-    settings["hr_sensor_name"] = name.strip()
-    _save(Path(root) / "settings.json", settings)

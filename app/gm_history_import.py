@@ -53,19 +53,6 @@ def _name(s):
     return " ".join(str(s or "").casefold().split())
 
 
-def _weight_factor(displayed, reps, volume):
-    """Detect explicit two-handle totals from measured set volume.
-
-    For example 26 kg displayed, 10 reps, 520 kg set volume -> 52 kg
-    combined. Do not try to fit arbitrary ratios (e.g. 137/(13*10));
-    these may be the result of weight changes during the set.
-    """
-    if not displayed or not reps or volume is None:
-        return 1
-    ratio = volume / (displayed * reps)
-    return 2 if abs(ratio - 2) <= 0.05 else 1
-
-
 def parse_gm_history_csv(payload, selected):
     if isinstance(payload, bytes):
         if len(payload) > MAX_BYTES:
@@ -121,7 +108,7 @@ def parse_gm_history_csv(payload, selected):
         )
 
     exercises = OrderedDict()
-    strength_count = timed_count = bilateral_rows = doubled_weights = 0
+    strength_count = timed_count = bilateral_rows = 0
     guessed_duration = 0
     last_set_by_exercise = {}
     total_reps = 0
@@ -162,12 +149,11 @@ def parse_gm_history_csv(payload, selected):
         if reps:
             if displayed is None:
                 raise GMHistoryCSVError("Wiederholungssatz ohne dokumentiertes Gewicht")
-            factor = _weight_factor(displayed, reps, volume)
-            weight = displayed * factor
-            if weight > 4095:
-                raise GMHistoryCSVError("Gesamtgewicht im FIT nicht darstellbar")
+            # Preserve the explicitly exported per-set resistance verbatim.
+            # Set Volume is an aggregate and MUST NOT be used to guess a
+            # per-grip multiplier (regression to the v0.1.18 weight bug).
+            weight = displayed
             strength_count += 1
-            doubled_weights += int(factor == 2)
             total_reps += reps
             exercises[key]["completion_method"] = 1
         else:
@@ -216,7 +202,6 @@ def parse_gm_history_csv(payload, selected):
         "strength_set_count": strength_count,
         "timed_set_count": timed_count,
         "side_rows": bilateral_rows,
-        "doubled_weight_sets": doubled_weights,
         "estimated_durations": guessed_duration,
         "total_reps": total_reps,
         "duration_seconds": duration,

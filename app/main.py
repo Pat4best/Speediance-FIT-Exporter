@@ -18,11 +18,12 @@ from windows_credentials import load_login, save_login, delete_login
 from preferences import export_folder, save_export_folder, saved_mappings, saved_weight_multipliers, remember_names, load_login_client_type, save_login_client_type
 from mapping_editor import MappingEditor
 from exercise_discovery import discover_names
-from preferences import load_language, save_language
+from preferences import load_language, save_language, load_hr_sensor_name, save_hr_sensor_name
+from hr_sensor import user_confirmed_sensor
 from i18n import translate
 
 APP = "Speediance FIT Exporter"
-VERSION = "0.1.13-beta"
+VERSION = "0.1.14-beta"
 DATA = Path(os.environ.get("LOCALAPPDATA", Path.home())) / "SpeedianceFITExporter"
 DATA.mkdir(parents=True, exist_ok=True)
 LOG = DATA / "diagnose.log"
@@ -66,6 +67,7 @@ class App(tk.Tk):
         self.save_login_var = tk.BooleanVar(value=False)
         self.login_client_type = tk.StringVar(value=load_login_client_type())
         self.export_dir = tk.StringVar(value=export_folder())
+        self.hr_sensor_name = tk.StringVar(value=load_hr_sensor_name())
         self.build_ui()
         self._load_remembered_login()
         self.after(100, self.poll)
@@ -84,6 +86,7 @@ class App(tk.Tk):
             "email": self.email.get(), "password": self.password.get(),
             "region": self.region.get(), "start": self.from_date.get(),
             "end": self.to_date.get(), "selected": list(self.table.selection()),
+            "hr_sensor": self.hr_sensor_name.get(),
         }
         try:
             save_language(selected)
@@ -101,6 +104,7 @@ class App(tk.Tk):
         self.region.set(previous["region"])
         self.from_date.set(previous["start"])
         self.to_date.set(previous["end"])
+        self.hr_sensor_name.set(previous["hr_sensor"])
         for i, item in enumerate(self.sessions):
             self.table.insert("", "end", iid=str(i), values=(
                 item["day"], item["title"], item["duration_min"], item["calories"]
@@ -205,6 +209,15 @@ class App(tk.Tk):
         scroller = ttk.Scrollbar(content, command=self.table.yview)
         scroller.pack(side="right", fill="y")
         self.table.configure(yscrollcommand=scroller.set)
+
+        sensor_row = ttk.Frame(footer)
+        sensor_row.pack(fill="x", pady=(4, 0))
+        ttk.Label(sensor_row, text=self.tr("HF-Sensor (optional):")).pack(side="left")
+        ttk.Entry(sensor_row, textvariable=self.hr_sensor_name, width=28).pack(
+            side="left", padx=(5, 8))
+        ttk.Label(sensor_row, text=self.tr(
+            "Nur verwenden, wenn Speediance den Sensornamen nicht liefert (z. B. HRM600:654360)."),
+            foreground="#555").pack(side="left")
 
         folder_row = ttk.Frame(footer)
         folder_row.pack(fill="x", pady=(6, 0))
@@ -471,6 +484,18 @@ class App(tk.Tk):
         if not folder:
             return
         selected = [self.sessions[i] for i in indices]
+        sensor_label = self.hr_sensor_name.get().strip()
+        try:
+            save_hr_sensor_name(sensor_label)
+        except (OSError, ValueError):
+            messagebox.showerror(self.tr("HF-Sensor"),
+                                 self.tr("HF-Sensor konnte nicht gespeichert werden."))
+            return
+        fallback_sensor = user_confirmed_sensor(sensor_label)
+        if sensor_label and not fallback_sensor:
+            messagebox.showerror(self.tr("HF-Sensor"),
+                                 self.tr("Bitte einen gültigen Sensor-Namen eingeben."))
+            return
 
         def job():
             successes = []
@@ -479,6 +504,8 @@ class App(tk.Tk):
             weight_overrides = saved_weight_multipliers()
             hr_samples = 0
             doubled_sets = 0
+            estimated_timing_count = 0
+            sensors_attached = 0
             not_mapped = set()
             missing_details = 0
             for item in selected:
@@ -497,6 +524,10 @@ class App(tk.Tk):
                         doubled_sets += sum(1 for set_data in ex.get("sets", [])
                                             if factor == 2 and not set_data.get("weight_already_total"))
                     hr_samples += len(detailed.get("heart_rate_points") or [])
+                    estimated_timing_count += int(bool(detailed.get("heart_rate_timing_estimated")))
+                    if not detailed.get("hr_sensor") and fallback_sensor:
+                        detailed["hr_sensor"] = fallback_sensor
+                    sensors_attached += int(bool(detailed.get("hr_sensor")))
                     successes.append(write_fit(detailed, Path(folder) / filename,
                                                overrides=overrides,
                                                weight_overrides=weight_overrides))
@@ -507,10 +538,12 @@ class App(tk.Tk):
                                                      or "keine Sätze" in str(exc)):
                         missing_details += 1
                     failures += 1
-            return successes, failures, len(not_mapped), missing_details, hr_samples, doubled_sets
+            return (successes, failures, len(not_mapped), missing_details,
+                    hr_samples, doubled_sets, estimated_timing_count, sensors_attached)
 
         def done(result):
-            successes, failures, unknown_count, missing_details, hr_samples, doubled_sets = result
+            (successes, failures, unknown_count, missing_details, hr_samples,
+             doubled_sets, estimated_timing_count, sensors_attached) = result
             self.status.set(self.tr("%d exportiert, %d Fehler, %d ohne Garmin-Zuordnung.") %
                             (len(successes), failures, unknown_count))
             message = self.tr("%d FIT-Dateien gespeichert. Fehler: %d") % (len(successes), failures)
@@ -519,6 +552,10 @@ class App(tk.Tk):
             if missing_details:
                 message += self.tr("\n%d Trainingseinheiten ohne Speediance-Satzdaten wurden NICHT als leere FIT-Aktivitäten exportiert.") % missing_details
             message += self.tr("\nHerzfrequenz: %d echte Messpunkte übertragen.") % hr_samples
+            if estimated_timing_count:
+                message += self.tr("\nBei %d Aktivität(en) wurden die HF-Zeitpunkte gleichmäßig über die Trainingsdauer verteilt.") % estimated_timing_count
+            if sensors_attached:
+                message += self.tr("\nHF-Sensorinformationen in %d FIT-Datei(en) hinterlegt.") % sensors_attached
             if doubled_sets:
                 message += self.tr("\nGewichte: %d Sätze von pro Griff auf Gesamtgewicht umgerechnet.") % doubled_sets
             messagebox.showinfo(self.tr("Export"), message)

@@ -1,4 +1,4 @@
-# Speediance FIT Exporter (Beta 0.1.8)
+# Speediance FIT Exporter (Beta 0.1.9)
 
 Lokale Windows-10/11-Anwendung zum Abruf abgeschlossener Speediance-Trainingseinheiten aus dem eigenen Account und zum Export als Garmin-FIT-Aktivitäten. Die Speediance-API ist **inoffiziell**; der Login ist ohne echten Testaccount nicht verifiziert.
 
@@ -67,6 +67,22 @@ Für Diagnosezwecke protokolliert die Anwendung ausschließlich anonyme Zählwer
 - **Deutsch / English:** Rechts oben im Hauptfenster die Sprache wechseln. Die Auswahl wird in `%LOCALAPPDATA%\\SpeedianceFITExporter\\settings.json` gespeichert und beim nächsten Programmstart wieder geladen. Beim Wechsel bleiben aktuelle Anmeldung, Datumsauswahl, geladene Trainings und Trainingsauswahl erhalten; auch die Übungszuordnung und Standarddialoge sind übersetzt. Die von Speediance gelieferten Original-Übungsnamen bleiben für exakte Garmin-Zuordnungen unverändert.
 
 **Sicherheit:** Die Änderung führt **keine zusätzlichen Anmeldungen** aus. Für den Kalender werden nur bereits bestehende Sitzungen wiederverwendet.
+
+## 0.1.9 – Abgeschlossene selbst erstellte Trainings aus der Historie laden
+
+Die Speediance-Monatskalender-API `/api/app/v5/trainingCalendar/monthNew` blendet abgeschlossene **eigene Custom-Template-Workouts** in manchen Ansichten aus. Das ist in der öffentlich einsehbaren Speediance-MCP-Implementierung dokumentiert.
+
+Daher erfolgt ab Version 0.1.9 **zusätzlich** eine schreibgeschützte GET-Abfrage bei
+`/api/mobile/v2/report/userTrainingDataRecord?startDate=JJJJ-MM-TT&endDate=JJJJ-MM-TT`.
+Sie liefert die Trainingshistorie einschließlich `trainingId`, `startTime`, `trainingTime` (Sekunden), `type`, `calorie`, `title` und wird anhand der `trainingId` mit den bisherigen Kalendereinträgen zusammengeführt. Die Quelle `history` liefert bei eigenen Trainings häufig die Einträge, die dem Kalender fehlen. Gesundheitsdaten aus der Phone-Synchronisation ohne Gym-Training-ID werden ausgeschlossen. Die Dauer wird auf Minuten umgerechnet und der Endzeitpunkt aus dem tatsächlichen Beginn + Dauer abgeleitet.
+
+Der Status meldet nun, wie viele Aktivitäten **zusätzlich aus der Historie** geladen wurden. Das Diagnoseprotokoll protokolliert ausschließlich Zählwerte aus der Historie (`rows`, `added`, `duplicates`, `outside`, `health`, `invalid`), keine privaten Trainingstitel/IDs oder Zugangsdaten. Bestehende Bike-/Nano-Anmeldungen werden weiterverwendet: der Aufruf benötigt **keinen neuen Login** und verdrängt keine Telefon-Sitzung.
+
+Die detailbezogenen Typen unterscheiden sich zwischen Kalender und Historie. Das Mapping wurde korrigiert (historische Custom-Templates: `type=5` → `cttTrainingInfoDetail`). Fehlt bei einem tatsächlich trainierten Workout dennoch der Übungsdatensatz, bleibt der Schutz vor einem stillen, inhaltlich leeren FIT-Export bestehen.
+
+**Prüfung:** Für den Fall „GMC · Mon 16 Nov“ ist der Unterschied der Quellen durch lokale Tests nachgestellt. Ob dein echter Account die Session in der Historie liefert, wird erst beim tatsächlichen Abruf mit deinem Login sichtbar.
+
+Quelle zum API-Verhalten: https://github.com/labatt/speediance-mcp
 
 ## Windows-Installer
 

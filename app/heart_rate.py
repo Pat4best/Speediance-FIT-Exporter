@@ -1,13 +1,17 @@
-"""Parse real (never estimated) Speediance heart-rate graph samples.
+"""Parse observed Speediance heart-rate graph values without inventing BPM.
 
-The public community API notes identify /api/app/watchMsg/getHeartRateGraph
-with a session UUID; graph rows have e.g. {"time": 2, "heartRate": 150}.
-Missing/zero heart-rate samples are holes, not measurements.
+Speediance returns at least two shapes: explicit timestamped points and
+{"heartRates": [...], "avgHeartRate": ..., "maxHeartRate": ...}.
+The latter has NO sample timestamps. To plot it as an activity timeline,
+evenly spaced timestamps are estimated across the known workout duration.
+Only the *time positions* are estimated: HR values remain actual samples.
 """
 import math
 
 
 def valid_bpm(raw):
+    if isinstance(raw, bool):
+        return None
     try:
         value = float(raw)
     except (ValueError, TypeError):
@@ -17,37 +21,86 @@ def valid_bpm(raw):
     return int(round(value))
 
 
-def graph_points(data):
-    """Return ordered (elapsed_seconds, bpm), valid real observations only."""
+def _unwrap_series(data):
+    """Return (series, has_explicit_times, format) from recognized API shapes."""
     if isinstance(data, dict):
-        for key in ("pointDataList", "heartRateList", "data", "list", "records"):
+        for key in ("heartRates", "pointDataList", "heartRateList",
+                    "heartRatePoints", "records", "list", "data"):
             if isinstance(data.get(key), list):
-                data = data[key]
-                break
-        else:
-            data = next((v for v in data.values() if isinstance(v, list)), [])
-    if not isinstance(data, list):
-        return []
-    points = {}
-    for index, entry in enumerate(data):
+                return data[key], key
+        for key in ("data", "result", "graph"):
+            if isinstance(data.get(key), dict):
+                return _unwrap_series(data[key])
+        return [], "unrecognized"
+    if isinstance(data, list):
+        return data, "list"
+    return [], "unrecognized"
+
+
+def graph_details(data, duration_seconds=None):
+    """Return samples, true summary values, source format and timeline provenance.
+
+    If a list lacks time/seconds fields, samples are placed evenly over the
+    workout's duration. This does not interpolate heart-rate measurements.
+    """
+    series, series_format = _unwrap_series(data)
+    duration = None
+    try:
+        duration = float(duration_seconds)
+        if not math.isfinite(duration) or duration <= 0:
+            duration = None
+    except (TypeError, ValueError):
+        pass
+    estimates = False
+    samples = {}
+    count = len(series)
+    for index, entry in enumerate(series):
         if isinstance(entry, dict):
-            value = next(
-                (entry.get(key) for key in ("heartRate", "heart", "hr", "bpm", "value", "rate")
-                 if key in entry),
-                None,
-            )
-            second = entry.get("time", entry.get("seconds", index))
+            raw = next((entry.get(key) for key in (
+                "heartRate", "heart", "heart_rate", "hr", "bpm", "value", "rate"
+            ) if key in entry), None)
+            elapsed = next((entry[key] for key in (
+                "elapsedSeconds", "elapsed", "seconds", "time", "second"
+            ) if key in entry), None)
         else:
-            value = entry
-            second = index
-        bpm = valid_bpm(value)
+            raw, elapsed = entry, None
+        bpm = valid_bpm(raw)
         if bpm is None:
             continue
+        if elapsed is None:
+            estimates = True
+            if duration is not None and count > 1:
+                elapsed = index * duration / (count - 1)
+            elif duration is not None:
+                elapsed = duration / 2
+            else:
+                elapsed = index
         try:
-            second = float(second)
+            sec = float(elapsed)
         except (ValueError, TypeError):
             continue
-        if not math.isfinite(second) or second < 0 or second > 24 * 60 * 60:
+        if not math.isfinite(sec) or not 0 <= sec <= 24 * 60 * 60:
             continue
-        points[int(round(second))] = bpm
-    return sorted(points.items())
+        samples[int(round(sec))] = bpm
+    # Retain actual Speediance server statistics when present. A set maximum
+    # is not a sample and must never be used to synthesize a graph.
+    summary = {}
+    if isinstance(data, dict):
+        for source, target in (("minHeartRate", "min"),
+                               ("avgHeartRate", "avg"),
+                               ("maxHeartRate", "max")):
+            value = valid_bpm(data.get(source))
+            if value is not None:
+                summary[target] = value
+    return {
+        "points": sorted(samples.items()),
+        "summary": summary,
+        "timing_estimated": estimates,
+        "series_format": series_format,
+        "raw_sample_count": count,
+    }
+
+
+def graph_points(data):
+    """Backward-compatible observed samples; no duration gives index seconds."""
+    return graph_details(data)["points"]

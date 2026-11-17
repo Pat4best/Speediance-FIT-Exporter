@@ -166,6 +166,11 @@ EN = {
     "Speediance-Übungen": "Speediance exercises",
     "Speediance-Namen filtern:": "Filter Speediance names:",
     "Garmin-Katalog durchsuchen": "Search Garmin exercise catalog",
+    "Katalogsprache:": "Catalog language:",
+    "Katalogsprache konnte nicht gespeichert werden.": "Could not save catalog language preference.",
+    "Suchbegriff (z. B. Bankdrücken / bench, Kreuzheben / deadlift):":
+        "Search (e.g., Bankdrücken / bench, Kreuzheben / deadlift):",
+
     "Suchbegriff (z. B. bench, fly, lat, stretch):":
         "Search term (e.g., bench, fly, lat, stretch):",
     "Kategorie filtern:": "Filter by category:",

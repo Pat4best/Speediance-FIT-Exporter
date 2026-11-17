@@ -7,8 +7,8 @@ from tkinter import filedialog, messagebox, ttk
 import webbrowser
 
 from fitwriter import write_fit
-from garmin_fit_reader import read_garmin_activity, GarminFitError
-from garmin_merge import (PRIORITY_LABELS, check_priorities, merge_workout)
+from garmin_fit_overlay import overlay_garmin_fit, GarminOverlayError
+from garmin_merge import PRIORITY_LABELS, check_priorities
 from garmin_personal import GarminPersonalClient, GarminPersonalError, match_activities
 from preferences import (saved_mappings, saved_weight_multipliers,
                          saved_merge_priorities, save_merge_priorities)
@@ -248,10 +248,9 @@ class GarminMergeDialog(tk.Toplevel):
 
         def job():
             fit = client.download_activity_fit(candidate["id"])
-            garmin = read_garmin_activity(fit)
-            combined, meta = merge_workout(detail, garmin, priority)
-            result = write_fit(
-                combined, path, overrides=saved_mappings(),
+            result, meta = overlay_garmin_fit(
+                fit, detail, path, priority,
+                overrides=saved_mappings(),
                 weight_overrides=saved_weight_multipliers(),
             )
             return result, meta
@@ -261,18 +260,31 @@ class GarminMergeDialog(tk.Toplevel):
             logger.info(
                 "Local Garmin-Speediance merge saved: heart_points=%d "
                 "garmin_hr=%d speediance_hr=%d out_of_window=%d "
-                "duration_seconds=%d",
+                "duration_seconds=%d garmin_original=%d preserved_types=%d "
+                "native_device_info=%d speediance_sets=%d replaced_native_sets=%d "
+                "hr_records_added=%d hr_records_patched=%d",
                 meta["samples"], meta["garmin_samples"],
                 meta["speediance_samples"], meta["out_of_window_samples"],
                 meta["duration_seconds"],
+                meta["garmin_original_messages"],
+                meta["garmin_preserved_message_types"],
+                meta["garmin_device_info"],
+                meta["new_speediance_sets"],
+                meta["replaced_garmin_sets"],
+                meta["added_hr_records"],
+                meta["patched_hr_records"],
             )
             messagebox.showinfo(
                 self.app.tr("Zusammenführung abgeschlossen"),
-                self.app.tr("Neue FIT-Datei lokal gespeichert:\n%s\n\n"
-                            "Herzfrequenzpunkte: %d\n"
+                self.app.tr("Garmin-originalbasierte FIT-Datei gespeichert:\n%s\n\n"
+                            "Speediance-Krafttrainingssätze: %d\n"
+                            "Garmin-Geräteinformationen erhalten: %d\n"
+                            "Zusätzliche HF-Records: %d\n"
                             "Außerhalb der gewählten Dauer: %d\n\n"
                             "Garmin Connect wurde NICHT verändert.") %
-                (str(output), meta["samples"], meta["out_of_window_samples"]),
+                (str(output), meta["new_speediance_sets"],
+                 meta["garmin_device_info"], meta["added_hr_records"],
+                 meta["out_of_window_samples"]),
                 parent=self,
             )
 

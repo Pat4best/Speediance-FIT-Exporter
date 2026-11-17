@@ -1,4 +1,4 @@
-# Speediance FIT Exporter (Beta 0.1.17)
+# Speediance FIT Exporter (Beta 0.1.18)
 
 Lokale Windows-10/11-Anwendung zum Abruf abgeschlossener Speediance-Trainingseinheiten aus dem eigenen Account und zum Export als Garmin-FIT-Aktivitäten. Die Speediance-API ist **inoffiziell**; der Login ist ohne echten Testaccount nicht verifiziert.
 
@@ -188,6 +188,16 @@ Die echten BPM-Messungen werden nicht interpoliert oder verändert, ebenso wenig
 **Einheitliche Trainingsuhr:** FIT-Sitzung und HR-Import nutzen dieselbe Berechnung des Trainingsbeginns; wenn die abgeschlossene Trainingshistorie eine `startTime` liefert, wird diese statt eines aus Endzeit minus Dauer berechneten Starts verwendet. Der gewohnte direkte Speediance→Garmin-FIT-Export bleibt der einzige Workflow; die Fenix-8-Datei dient nur als Referenz und wird nicht eingemischt.
 
 **Überprüfung:** Mit 0.1.17 die Trainingseinheit vom 16.11.2026 erneut exportieren. Erwartet wird, dass im Diagnoseprotokoll jetzt ein `time_mode=` erscheint und bei unterstützten Zeittypen die 942 Speediance-Pulswerte als FIT-`record`-Messpunkte übernommen werden. Die tatsächliche Zeitkonvention wird erst durch diesen Praxis-Test bestätigt; bei `0 measured samples` bitte die vollständige `Heart-rate graph:`-Zeile bereitstellen.
+
+## 0.1.18 – tatsächlich ausgeführte Satzgewichte statt Höchstwert
+
+Beim Vergleich eines Trainings am 16.11.2026 mit den tatsächlichen Einstellungen am Gym Monster fiel eine Abweichung auf: Bei **„Sitzendes Rudern mit zwei Griffen“** waren **26 kg im FIT-Import**, nach einer Korrektur am Gerät aber **20 kg ausgeführt** worden.
+
+Bisher hat der Exporter in den aufgezeichneten `trainingInfoDetail.weights` bzw. `leftWeights`/`rightWeights` pro Satz **`max()`** genommen. Eine kurzzeitige höhere Vorgabe oder ein Einstellwert kann dadurch fälschlich zum ausgeführten Gewicht werden. Jetzt wird aus den *aufgezeichneten positiven Messwerten dieses Satzes* der am häufigsten vorkommende Gewichtswert ausgewählt; bei Gleichstand zählt der letzte Wert. Nullen nach dem Ausklinken werden ignoriert. Sind separate Links-/Rechts-Serien vorhanden, werden sie unabhängig ausgewertet und bei zwei Griffen einmalig summiert. Der vorhandene per-Übung-Multiplikator wird nicht noch einmal darauf angewendet.
+
+Die Gewichte stammen weiterhin direkt aus den Speediance-*Trainingsaufzeichnungen*, nicht aus einem GM-Manager-Trainingsplan. Ein neuer, datensparsamer Diagnoseeintrag `Weight source of completed sets:` nennt je Training nur die Anzahl der gewählten Datenquellen (`both_sides`, `single_side`, `generic_telemetry`, `missing`) und wie viele Satzserien unterschiedliche Gewichte enthalten – keine Gewichtszahlen oder persönliche Identifikatoren. Falls für einen Satz ausschließlich generische `weights`-Telemetrie verfügbar ist, weist das Protokoll auf diese Unsicherheit hin.
+
+**Einschränkung:** Ohne das Original der privaten Speediance-API-Antwort lässt sich nicht sicher bestätigen, ob die korrigierten **20 kg** tatsächlich in den gespeicherten Satzserien vorhanden sind. Die Fehlerursache `max()` ist behoben, aber die reale Aufzeichnung muss den neuen Wert liefern. Nach einem Export mit 0.1.18 bitte den konkret betroffenen Satz in Garmin Connect kontrollieren und bei unverändert 26 kg die neue Diagnosezeile teilen; dann muss die Quelle genauer untersucht werden.
 
 ## Windows-Installer
 

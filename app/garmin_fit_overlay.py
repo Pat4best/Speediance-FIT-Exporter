@@ -335,7 +335,9 @@ def overlay_garmin_fit(original, speediance, destination, priorities=None,
             out.extend(item["raw"])
             continue
         num = item["global"]
-        if num == 225:
+        if num in (225, 264):
+            # Garmin exercise titles refer to the original SETs and may
+            # clash with the Speediance custom exercise-title mapping.
             continue
         changes = {}
         if num == 0:

@@ -149,6 +149,19 @@ EN = {
         "Speediance returned no exercise details for this workout.",
     "Speediance hat für dieses Training keine Sätze geliefert":
         "Speediance returned no sets for this workout.",
+    "Account in dieser Region nicht gefunden":
+        "No Speediance account was found in the selected region.",
+    "Für den Account ist kein Passwort eingerichtet":
+        "This Speediance account does not have a password yet.",
+    "Unbekannte Login-Prüfantwort":
+        "Speediance returned an unexpected sign-in verification response.",
+    "Login-Antwort unvollständig":
+        "The Speediance sign-in response was incomplete.",
+    "Login: Token oder Nutzer-ID fehlt":
+        "Sign-in failed: missing session credentials.",
+    "Verbindung fehlgeschlagen (URLError)":
+        "Could not connect to Speediance (network error).",
+
 }
 # Translate curated Garmin exercise labels. IDs, not labels, drive FIT export.
 EN.update({

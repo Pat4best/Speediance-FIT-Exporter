@@ -1,4 +1,4 @@
-# Speediance FIT Exporter (Beta 0.1.29)
+# Speediance FIT Exporter (Beta 0.1.30)
 
 Lokale Windows-10/11-Anwendung zum Abruf abgeschlossener Speediance-Trainingseinheiten aus dem eigenen Account und zum Export als Garmin-FIT-Aktivitäten. Die Speediance-API ist **inoffiziell**; der Login ist ohne echten Testaccount nicht verifiziert.
 
@@ -673,6 +673,39 @@ Die Warnung über geschätzte Satzanfangszeiten bleibt bestehen.
 Diese Prüfungen verhindern erneut unbemerkte Garmin-only-Dateien.
 Ein abschließender Importtest der neuen Version mit der echten
 Fenix-Aufzeichnung muss noch nachgewiesen werden.
+
+## 0.1.30-beta – Garmin-/Speediance-Zeitversatz aus echtem Training behoben
+
+Der echte Export von Version 0.1.29 meldete trotz erfolgreich ausgewählter
+GM-Manager-History-CSV mit **9 Übungen und 27 Satzzeilen** nur `ValueError`.
+Ein erneuter Abgleich der originalen Daten zeigt die Ursache:
+
+- Beginn GM Manager / Speediance: **16.11.2026, 15:18:17 MEZ**
+- Beginn Original-Garmin-FIT: **16.11.2026, 15:19:52 MEZ**
+- Zeitversatz: **−95 Sekunden** (Speediance beginnt früher)
+
+Mit Trainingsbeginn-Priorität **Garmin** war der bisherige
+`strength_start_offset = -95`. Der direkte FIT-Writer lehnt negative
+Satzstartpositionen ab. Die bisherigen synthetischen Tests verwendeten
+nur den umgekehrten Fall und erkannten diesen Fehler nicht.
+
+Ab 0.1.30 werden ausschließlich bei **GM-Manager-History-CSV** bzw.
+vom Nutzer bestätigter **GM-Manager-JSON** die *geschätzten*
+Satzzeitpunkte auf den Garmin-Aktivitätsbeginn gelegt, wenn Speediance
+vor Garmin gestartet wurde. Die originalen Garmin-Record-Zeitstempel,
+Herzfrequenz- und Geräteaufzeichnungen bleiben unverändert.
+Originale Speediance-Telemetrie wird nicht auf diese Weise verschoben.
+Im Diagnoseprotokoll steht für einen betroffenen Export
+`estimated_set_timing_aligned_to_garmin=True`; die Erfolgsmeldung
+enthält einen deutlichen Hinweis auf diese Anpassung.
+
+Für fehlgeschlagene FIT-Exporte wird ein verständlicher Fehlertext statt
+eines nackten `ValueError` angezeigt. Der in 0.1.29 eingeführte
+Schutz gegen 0 importierte Sätze sowie die finale Prüfung von Satzanzahl,
+Wiederholungen und Gewichten bleiben erhalten.
+
+Die Regressionstests reproduzieren ausdrücklich den negativen
+95-Sekunden-Abstand und prüfen die unveränderten Garmin-Sensor-Datensätze.
 
 ## Windows-Installer
 

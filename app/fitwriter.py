@@ -98,13 +98,13 @@ def write_fit(workout, destination, overrides=None, weight_overrides=None):
                  (3, 0x8C, serial), (4, 0x86, start_ts)])
     # Event TIMER=0, event_type START=0.
     enc.mesg(21, [(253, 0x86, start_ts), (0, 0, 0), (1, 0, 0)])
-    # DeviceInfo (global 23): write only a sensor name explicitly returned
-    # by Speediance. watchType or pulse values do not identify an HRM 600.
+    # DeviceInfo (global 23): only sensor metadata actually returned by
+    # Speediance. A manually typed label is not verified hardware identity.
     # Leave unknown product IDs and serial numbers absent.
     sensor = workout.get("hr_sensor")
     if isinstance(sensor, dict) and isinstance(sensor.get("name"), str):
         name = sensor["name"].strip()
-        if name and sensor.get("verified_from") in ("speediance_metadata", "user_confirmed"):
+        if name and sensor.get("verified_from") == "speediance_metadata":
             device_fields = [
                 (253, 0x86, start_ts),
                 (0, 2, 1),            # index of the external sensor

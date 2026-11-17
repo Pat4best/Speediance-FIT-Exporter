@@ -86,6 +86,56 @@ def graph_shape(data):
                         "maxheartrate", "avgheartrate", "minheartrate",
                     }:
                         known.add(n)
+    # Detailed type-and-status counts from exactly the known HR/time fields.
+    # These counts do not expose BPM readings or timestamps.
+    hr_types = {}
+    hr_status = {"valid": 0, "zero": 0, "below_range": 0,
+                 "above_range": 0, "nonnumeric": 0, "absent": 0}
+    time_types = {}
+    time_status = {"valid_seconds": 0, "negative": 0, "over_24h": 0,
+                   "nonnumeric": 0, "absent": 0}
+    for item in series:
+        if not isinstance(item, dict):
+            continue
+        has_hr = "heartRate" in item
+        if has_hr:
+            value = item["heartRate"]
+            typ = type(value).__name__
+            hr_types[typ] = hr_types.get(typ, 0) + 1
+            try:
+                v = float(value) if not isinstance(value, (dict, list, bool)) else math.nan
+            except (ValueError, TypeError, OverflowError):
+                v = math.nan
+            if not math.isfinite(v):
+                hr_status["nonnumeric"] += 1
+            elif v == 0:
+                hr_status["zero"] += 1
+            elif v < 20:
+                hr_status["below_range"] += 1
+            elif v > 254:
+                hr_status["above_range"] += 1
+            else:
+                hr_status["valid"] += 1
+        else:
+            hr_status["absent"] += 1
+        if "time" not in item:
+            time_status["absent"] += 1
+        else:
+            value = item["time"]
+            typ = type(value).__name__
+            time_types[typ] = time_types.get(typ, 0) + 1
+            try:
+                v = float(value) if not isinstance(value, (dict, list, bool)) else math.nan
+            except (ValueError, TypeError, OverflowError):
+                v = math.nan
+            if not math.isfinite(v):
+                time_status["nonnumeric"] += 1
+            elif v < 0:
+                time_status["negative"] += 1
+            elif v > 86400:
+                time_status["over_24h"] += 1
+            else:
+                time_status["valid_seconds"] += 1
     return {
         "format": fmt,
         "items": len(series),
@@ -95,6 +145,10 @@ def graph_shape(data):
             (len(item) for item in series[:30] if isinstance(item, dict)),
             default=0,
         ),
+        "heartRate_types": hr_types,
+        "heartRate_status": hr_status,
+        "time_types": time_types,
+        "time_status": time_status,
     }
 
 

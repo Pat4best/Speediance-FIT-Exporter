@@ -15,7 +15,9 @@ from garmin_catalog import (
 from preferences import (
     observed_names, remember_names, saved_mappings, set_override,
     load_catalog_language, save_catalog_language,
+    saved_weight_multipliers, set_weight_multiplier,
 )
+from weight_handling import weight_multiplier_for
 from i18n import translate
 
 
@@ -53,6 +55,8 @@ class MappingEditor(tk.Toplevel):
         self.result_count = tk.StringVar()
         self.feedback = tk.StringVar(value=self.tr("Links und rechts eine Übung auswählen."))
         self.manual_mode = tk.BooleanVar(value=False)
+        self.weight_per_grip = tk.BooleanVar(value=False)
+        self.weight_info = tk.StringVar()
 
         self.filters = [(self.tr("Alle Kategorien"), None)] + list(
             category_filters(self.language)
@@ -109,13 +113,15 @@ class MappingEditor(tk.Toplevel):
         left_table_frame = ttk.Frame(left)
         left_table_frame.grid(row=2, column=0, sticky="nsew")
         self.table = ttk.Treeview(
-            left_table_frame, columns=("name", "mapped"),
+            left_table_frame, columns=("name", "mapped", "weight"),
             show="headings", selectmode="browse",
         )
         self.table.heading("name", text=self.tr("Speediance-Übung"))
         self.table.heading("mapped", text=self.tr("Garmin-Zuordnung"))
+        self.table.heading("weight", text=self.tr("Gewicht"))
         self.table.column("name", width=235, minwidth=120, stretch=True)
         self.table.column("mapped", width=170, minwidth=90, stretch=True)
+        self.table.column("weight", width=52, minwidth=45, stretch=False)
         self.table.pack(side="left", fill="both", expand=True)
         left_scroll = ttk.Scrollbar(left_table_frame, command=self.table.yview)
         left_scroll.pack(side="right", fill="y")
@@ -195,6 +201,23 @@ class MappingEditor(tk.Toplevel):
             ), foreground="#555", wraplength=1020,
         ).pack(anchor="w", pady=(6, 0))
 
+        weight_row = ttk.Frame(bottom)
+        weight_row.pack(fill="x", pady=(8, 0))
+        ttk.Checkbutton(
+            weight_row,
+            text=self.tr("Speediance-Gewicht pro Griff (×2 für Garmin)"),
+            variable=self.weight_per_grip,
+            command=self.change_weight_setting,
+        ).pack(side="left")
+        ttk.Label(
+            bottom,
+            text=self.tr("Bei echten Links-/Rechts-Messwerten werden beide Seiten addiert. "
+                         "Die ×2-Regel gilt nur für einzelne Speediance-Gewichtsangaben."),
+            foreground="#555", wraplength=1030,
+        ).pack(anchor="w", pady=(2, 0))
+        ttk.Label(bottom, textvariable=self.weight_info, foreground="#23754a").pack(
+            anchor="w", pady=(2, 0))
+
         controls = ttk.Frame(frame)
         controls.pack(fill="x", pady=(9, 0))
         ttk.Button(controls, text=self.tr("Zuordnung entfernen"),
@@ -234,6 +257,7 @@ class MappingEditor(tk.Toplevel):
         self._refresh_left(selected=current)
         self._refresh_results()
         self._restore_picker_state(current, old_codes, old_choice)
+        self.update_weight_selection()
         # Treeview can emit a selection event after rebuild; restore the
         # pending right-side choice once the callbacks have settled.
         self.after_idle(lambda: self._restore_picker_state(current, old_codes, old_choice))
@@ -263,11 +287,13 @@ class MappingEditor(tk.Toplevel):
         if rows:
             self.table.delete(*rows)
         mappings = saved_mappings()
+        weight_overrides = saved_weight_multipliers()
         for i, name in enumerate(self.visible_names):
             cat, sub = fit_exercise(name, overrides=mappings)
             label = self._label_for_codes(cat, sub) if sub is not None else self.tr(
                 "Keine Zuordnung")
-            self.table.insert("", "end", iid=str(i), values=(name, label))
+            factor = weight_multiplier_for(name, weight_overrides)
+            self.table.insert("", "end", iid=str(i), values=(name, label, "×%d" % factor))
         if previous in self.visible_names:
             row_id = str(self.visible_names.index(previous))
             self.table.selection_set(row_id)
@@ -323,8 +349,38 @@ class MappingEditor(tk.Toplevel):
         self.subtype.set(str(sub) if sub is not None else "")
         self.assigned_label.set(self._label_for_codes(cat, sub))
         self.feedback.set(self.tr("Rechts eine Garmin-Übung auswählen."))
+        self.update_weight_selection()
         self._update_assign_state()
         self.search_entry.focus_set()
+
+    def update_weight_selection(self):
+        name = self.selected_name
+        if not name:
+            self.weight_per_grip.set(False)
+            return
+        factor = weight_multiplier_for(name, saved_weight_multipliers())
+        self.weight_per_grip.set(factor == 2)
+
+    def change_weight_setting(self):
+        """Save the per-exercise x1/x2 interpretation immediately."""
+        name = self.selected_name
+        if not name:
+            self.weight_per_grip.set(False)
+            return
+        factor = 2 if self.weight_per_grip.get() else 1
+        try:
+            set_weight_multiplier(name, factor)
+        except (ValueError, OSError):
+            messagebox.showerror(
+                self.tr("Gewicht"), self.tr("Gewichtseinstellung konnte nicht gespeichert werden."),
+                parent=self,
+            )
+            self.update_weight_selection()
+            return
+        self._refresh_left(selected=name)
+        self.weight_info.set(
+            self.tr("Gewichtsfaktor für %s gespeichert: ×%d") % (name, factor)
+        )
 
     def choose_result(self, event=None):
         rows = self.results_table.selection()

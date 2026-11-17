@@ -8,8 +8,8 @@ EN = {
         "Garmin FIT is the base: original activity, device and sensor data are preserved. Speediance adds actual strength sets. Nothing online is modified.",
     "Neue FIT-Datei aus der ORIGINALEN Garmin-Aufzeichnung. Für vollständige Garmin-Zeitachsen Garmin als Trainingsbeginn und Trainingsdauer wählen. Ein manueller Import kann eine zweite Aktivität erzeugen; online wird nichts gelöscht oder überschrieben.":
         "New FIT file based on the ORIGINAL Garmin activity. Choose Garmin for activity start and duration to retain the full native Garmin timeline. Manual import may create another activity; nothing online is deleted or overwritten.",
-    "Garmin-originalbasierte FIT-Datei gespeichert:\\n%s\\n\\nSpeediance-Krafttrainingssätze: %d\\nGarmin-Geräteinformationen erhalten: %d\\nZusätzliche HF-Records: %d\\nAußerhalb der gewählten Dauer: %d\\n\\nGarmin Connect wurde NICHT verändert.":
-        "Garmin-based FIT file saved:\\n%s\\n\\nSpeediance strength sets: %d\\nGarmin device information preserved: %d\\nAdded HR records: %d\\nOutside selected duration: %d\\n\\nGarmin Connect was NOT modified.",
+    "Garmin-originalbasierte FIT-Datei gespeichert:\n%s\n\nSpeediance-Krafttrainingssätze: %d\nGarmin-Geräteinformationen erhalten: %d\nZusätzliche HF-Records: %d\nAußerhalb der gewählten Dauer: %d\n\nGarmin Connect wurde NICHT verändert.":
+        "Garmin-based FIT file saved:\n%s\n\nSpeediance strength sets: %d\nGarmin device information preserved: %d\nAdded HR records: %d\nOutside selected duration: %d\n\nGarmin Connect was NOT modified.",
     "Mit Garmin abgleichen…": "Match with Garmin…",
     "Garmin Personal API – Abgleich und FIT-Merge": "Garmin Personal API – match and FIT merge",
     "Garmin-Aktivität mit Speediance zusammenführen": "Merge a Garmin activity with Speediance",

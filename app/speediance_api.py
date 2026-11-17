@@ -43,6 +43,41 @@ class APIError(Exception):
     pass
 
 
+# Presence-only diagnostics: a different history 'id' is not necessarily a
+# completed-session ID and must never be guessed as a detail endpoint path.
+HISTORY_CANDIDATE_FIELDS = (
+    "id", "recordId", "trainingRecordId", "sessionId", "uuid",
+    "trainingId", "templateId", "trainingTemplateId", "courseId",
+    "planId", "courseType", "type",
+)
+
+
+def completed_history_shape(record):
+    """Safe to log: no identifiers, titles, timestamps or measured values."""
+    if not isinstance(record, dict):
+        return {"identifier_fields": [], "id_relation": "unavailable",
+                "history_type": "unknown"}
+    fields = [key for key in HISTORY_CANDIDATE_FIELDS
+              if record.get(key) is not None]
+    history_id = record.get("id")
+    training_id = record.get("trainingId")
+    if history_id is None or training_id is None:
+        relation = "unavailable"
+    elif str(history_id) == str(training_id):
+        relation = "same"
+    else:
+        relation = "different"
+    try:
+        kind = int(record.get("type"))
+    except (ValueError, TypeError, OverflowError):
+        kind = None
+    return {
+        "identifier_fields": fields,
+        "id_relation": relation,
+        "history_type": kind if kind in ROUTES else "unknown",
+    }
+
+
 class Client:
     def __init__(self, logger, region="EU", device=1,
                  login_client_type=DEFAULT_LOGIN_CLIENT_TYPE, cache_dir=None):
@@ -305,6 +340,21 @@ class Client:
                     stat["outside"] += 1
                     continue
                 if tid in items:
+                    # A calendar template might no longer exist. The history
+                    # record may expose distinct identifiers. Only compare
+                    # structural presence; never log actual values or assume
+                    # another id is safe to request as a detail endpoint.
+                    shape = completed_history_shape(record)
+                    calendar_kind = items[tid].get("type")
+                    items[tid]["history_type"] = shape["history_type"]
+                    self.logger.info(
+                        "Completed workout history cross-reference: "
+                        "history_fields=%s id_vs_trainingId=%s "
+                        "calendar_type=%s history_type=%s",
+                        shape["identifier_fields"], shape["id_relation"],
+                        calendar_kind if calendar_kind in ROUTES else "unknown",
+                        shape["history_type"],
+                    )
                     # History can contain the real clock start of a workout
                     # already discovered through the month calendar.
                     items[tid]["watch_type"] = record.get("watchType") or 0
@@ -338,6 +388,7 @@ class Client:
                     "unit": self.unit,
                     "device_type": self.device,
                     "source": "history",
+                    "history_type": completed_history_shape(record)["history_type"],
                     "started_at": record.get("startTime"),
                     "watch_type": record.get("watchType") or 0,
                     "hr_sensor": find_hr_sensor(record),
@@ -381,7 +432,12 @@ class Client:
         raw = None
         # The calendar's type sometimes points at an empty detail endpoint.
         # Safely try alternative read-only endpoints before declaring no details.
-        preferred = ROUTES.get(workout.get("type"), [])
+        # The completed-history session type takes priority when known.
+        # This only affects route order; no speculative ID substitution.
+        resolved_type = workout.get("history_type")
+        if resolved_type not in ROUTES:
+            resolved_type = workout.get("type")
+        preferred = ROUTES.get(resolved_type, [])
         routes = list(dict.fromkeys(preferred + ALL_ROUTES))
         # The Speediance backend sometimes rejects the same completed-set
         # detail with an app code (observed 100041) while returning the

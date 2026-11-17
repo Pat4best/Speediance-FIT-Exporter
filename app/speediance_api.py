@@ -78,6 +78,41 @@ def completed_history_shape(record):
     }
 
 
+def workout_provenance_shape(workout, history_rows):
+    """Compare selected workout to completed history without exposing IDs.
+
+    Calendar rows are not guaranteed to occur in the history response, and
+    a logged cross-reference for another row must not be attributed to this
+    selected workout. Only compare in memory; return counts and booleans.
+    """
+    try:
+        current_id = int(workout.get("training_id"))
+    except (ValueError, TypeError, OverflowError):
+        current_id = None
+    day = str(workout.get("day") or "")[:10]
+    title = " ".join(str(workout.get("title") or "").casefold().split())
+    try:
+        duration = float(workout.get("duration_min") or 0) * 60
+    except (ValueError, TypeError, OverflowError):
+        duration = 0
+    valid_day = [r for r in history_rows if r.get("day") == day and day]
+    exact = [r for r in history_rows if current_id is not None
+             and r.get("training_id") == current_id]
+    same_title = [r for r in valid_day if title and
+                  " ".join(str(r.get("title") or "").casefold().split()) == title]
+    near_duration = [r for r in valid_day
+                     if duration > 0 and r.get("duration_seconds") is not None
+                     and abs(r["duration_seconds"] - duration) <= 180]
+    both = [r for r in same_title if r in near_duration]
+    return {
+        "matched_by_trainingId": bool(exact),
+        "history_on_same_day": len(valid_day),
+        "same_day_same_title": len(same_title),
+        "same_day_close_duration": len(near_duration),
+        "same_day_title_and_duration": len(both),
+    }
+
+
 class Client:
     def __init__(self, logger, region="EU", device=1,
                  login_client_type=DEFAULT_LOGIN_CLIENT_TYPE, cache_dir=None):
@@ -204,6 +239,7 @@ class Client:
         self.history_added = 0
         self.history_stats = {}
         self.calendar_query_stats = []
+        history_candidates = []
         year, month = start.year, start.month
         device_types = (self.device, 2 if self.device == 1 else 1)
         while (year, month) <= (end.year, end.month):
@@ -339,6 +375,18 @@ class Client:
                 if not start <= started <= end:
                     stat["outside"] += 1
                     continue
+                try:
+                    history_duration = float(record.get("trainingTime"))
+                    if not 0 < history_duration <= 86400:
+                        history_duration = None
+                except (ValueError, TypeError, OverflowError):
+                    history_duration = None
+                history_candidates.append({
+                    "training_id": tid,
+                    "day": started.isoformat(),
+                    "title": record.get("title"),
+                    "duration_seconds": history_duration,
+                })
                 if tid in items:
                     # A calendar template might no longer exist. The history
                     # record may expose distinct identifiers. Only compare
@@ -406,6 +454,24 @@ class Client:
         result.sort(key=lambda w: (
             w["day"], str(w["finished_at"] or ""), w["training_id"]
         ), reverse=True)
+        # One privacy-safe line per visible workout row. The 1-based row
+        # matches the displayed list order, allowing the selected session
+        # to be diagnosed without showing title, date, ID or measured values.
+        for row_number, workout in enumerate(result, 1):
+            evidence = workout_provenance_shape(workout, history_candidates)
+            source = workout.get("source") or "calendar"
+            self.logger.info(
+                "Workout history provenance row=%d source=%s "
+                "matched_by_trainingId=%s history_on_same_day=%d "
+                "same_day_same_title=%d same_day_close_duration=%d "
+                "same_day_title_and_duration=%d",
+                row_number, source if source in ("calendar", "history") else "unknown",
+                evidence["matched_by_trainingId"],
+                evidence["history_on_same_day"],
+                evidence["same_day_same_title"],
+                evidence["same_day_close_duration"],
+                evidence["same_day_title_and_duration"],
+            )
         self.logger.info(
             "Loaded %d completed workouts; recovered=%d old API, %d other device, %d history",
             len(result), self.calendar_fallback_added,

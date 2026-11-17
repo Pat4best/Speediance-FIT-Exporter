@@ -34,6 +34,8 @@ EN = {
         "Garmin-based FIT file saved:\n%s\n\nSpeediance strength sets: %d\nGarmin device information preserved: %d\nAdded HR records: %d\nOutside selected duration: %d\n\nGarmin Connect was NOT modified.",
     "Mit Garmin abgleichen…": "Match with Garmin…",
     "Speediance-Datensatz prüfen…": "Inspect Speediance response…",
+    "API-Diagnose: %d normale Detail-Abfragen (%d mit Sätzen), %d recordId-Abfragen (%d mit Sätzen).":
+        "API diagnosis: %d normal detail requests (%d with sets), %d recordId requests (%d with sets).",
     "API-Diagnose abgeschlossen: %d Detail-Abfragen, %d Antworten mit Sätzen.":
         "API diagnosis completed: %d detail requests, %d responses with completed sets.",
     "Garmin Personal API – Abgleich und FIT-Merge": "Garmin Personal API – match and FIT merge",

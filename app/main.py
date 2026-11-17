@@ -58,6 +58,7 @@ class App(tk.Tk):
         self.sessions = []
         self.events = queue.Queue()
         self.busy = False
+        self.login_in_progress = False
         self.language = tk.StringVar(value=load_language())
         self.language_label = tk.StringVar(
             value="Deutsch" if self.language.get() == "de" else "English"
@@ -368,7 +369,8 @@ class App(tk.Tk):
                     callback(value)
                 else:
                     self.status.set(self.tr("Fehler. Diagnoseprotokoll kann gespeichert werden."))
-                    if self.login_status.get().startswith("● Anmeldung läuft"):
+                    if self.login_in_progress:
+                        self.login_in_progress = False
                         self.login_status.set(self.tr("● Nicht angemeldet – Anmeldung fehlgeschlagen"))
                         self.login_status_label.configure(foreground="#9a3412")
                     messagebox.showerror(self.tr("Fehler"), self.tr(callback))
@@ -396,6 +398,7 @@ class App(tk.Tk):
             return client
 
         def done(client):
+            self.login_in_progress = False
             self.client = client
             self.login_status.set(self.tr("● Angemeldet (Speediance, %s)") % login_slot)
             self.login_status_label.configure(foreground="#23754a")
@@ -421,6 +424,7 @@ class App(tk.Tk):
             self.status.set(self.tr("Angemeldet. Jetzt Trainings laden."))
 
         self.client = None
+        self.login_in_progress = True
         self.login_status.set(self.tr("● Anmeldung läuft …"))
         self.status.set(self.tr("Anmeldung wird geprüft …"))
         self.run_job(job, done)

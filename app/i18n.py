@@ -34,6 +34,16 @@ EN = {
         "Garmin-based FIT file saved:\n%s\n\nSpeediance strength sets: %d\nGarmin device information preserved: %d\nAdded HR records: %d\nOutside selected duration: %d\n\nGarmin Connect was NOT modified.",
     "Mit Garmin abgleichen…": "Match with Garmin…",
     "GM-Manager-JSON wählen…": "Choose GM Manager JSON…",
+    "GM-Manager-History-CSV wählen…": "Choose GM Manager history CSV…",
+    "GM-Manager-Trainingshistorie wählen": "Choose GM Manager workout history",
+    "GM-Manager-History bestätigen": "Confirm GM Manager history",
+    "History-CSV bestätigt: %d Übungen, %d Sätze, %d Kraft-Wiederholungen.":
+        "History CSV confirmed: %d exercises, %d sets, %d strength repetitions.",
+    "Satzquelle: GM-Manager-Workout-History-CSV. Satzdauern vorhanden, Satzanfangszeiten geschätzt.\n\n":
+        "Set source: GM Manager workout history CSV. Set durations recorded, set starts estimated.\n\n",
+    "Die GM-Manager-History-CSV enthält aufgezeichnete Satzwerte zur ausgewählten Einheit. Stimmt die Zuordnung?\n\nÜbungen: %d, Kraftsätze: %d, Zeitsätze: %d, Links-/Rechts-Zeilen: %d.\nGewichte werden ohne zusätzliche Verdopplung übernommen. Satzdauern werden verwendet; genaue Satzanfangszeiten sind nicht vorhanden.":
+        "The GM Manager history CSV contains recorded set values for the selected session. Is this the right session?\n\nExercises: %d, strength sets: %d, timed sets: %d, left/right rows: %d.\nWeights are imported without additional doubling. Set durations are used; exact set start times are unavailable.",
+
     "GM-Manager-Trainingsdatei wählen": "Choose GM Manager workout export",
     "GM-Manager-Import": "GM Manager import",
     "Absolvierte Sätze bestätigen": "Confirm completed sets",

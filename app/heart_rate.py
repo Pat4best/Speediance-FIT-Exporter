@@ -174,8 +174,13 @@ def _clock_mode(times, duration, start_epoch=None, start_day_seconds=None):
     if not times:
         return "no_time_values", None, True
     first, last = min(times), max(times)
-    if first < 0 or duration is None or duration <= 0:
-        return "invalid_or_unknown_time", None, False
+    if first < 0:
+        return "invalid_time", None, False
+    if duration is None or duration <= 0:
+        # graph_points() is also used standalone for small elapsed time series.
+        if last <= 86400:
+            return "elapsed_seconds", lambda v: v, False
+        return "duration_required_for_long_times", None, False
     span = last - first
     reference = _numeric_time(start_epoch)
     def epoch_mode(scale, label):
@@ -205,7 +210,13 @@ def _clock_mode(times, duration, start_epoch=None, start_day_seconds=None):
 
     if last <= duration + 120:
         return "elapsed_seconds", lambda v: v, False
-    if last <= 1000 * (duration + 120) and last > 86400:
+    # A native second-of-day clock can align exactly with the local start.
+    local = _numeric_time(start_day_seconds)
+    if last <= 86400 and local is not None:
+        aligned = sum(-120 <= v - local <= duration + 120 for v in times)
+        if aligned >= max(1, int(0.8 * len(times))) and first > duration + 120:
+            return "seconds_since_midnight", lambda v: v - local, False
+    if last <= 1000 * (duration + 120) and last > duration + 120:
         return "elapsed_milliseconds", lambda v: v / 1000, False
 
     # Some sources report milliseconds since midnight instead of an epoch.

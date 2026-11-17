@@ -185,8 +185,8 @@ def match_activities(workout, rows, *, max_start_delta_seconds=20 * 60):
         except (TypeError, ValueError):
             other_duration = None
         # Duration may differ by few minutes because the watch starts first.
-        ratio = (abs(other_duration - duration) / max(duration, other_duration))
-        if other_duration is not None else None
+        ratio = (abs(other_duration - duration) / max(duration, other_duration)
+                 if other_duration is not None else None)
         if ratio is not None and ratio > 0.4:
             continue
         candidates.append({

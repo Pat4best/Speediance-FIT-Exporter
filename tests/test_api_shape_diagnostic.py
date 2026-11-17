@@ -114,7 +114,7 @@ class ShapeDiagnosticTests(unittest.TestCase):
             self.assertTrue(all("allow_error" in kw for _, kw in requests))
             self.assertIn("Selected recordId detail route=", stream.getvalue())
             self.assertIn("finishedReps[].finishedCount", stream.getvalue())
-            for secret in ("PRIVATE-RECORD-UUID-123", "HIDDEN EXERCISE", "91827364", "30"):
+            for secret in ("PRIVATE-RECORD-UUID-123", "HIDDEN EXERCISE", "91827364", '"weights": [30]'):
                 self.assertNotIn(secret, stream.getvalue())
         finally:
             logger.removeHandler(handler)

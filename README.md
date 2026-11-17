@@ -489,6 +489,32 @@ ist, werden keine Planwerte als ausgeführt exportiert.
 ermitteln, ob überhaupt eine getrennte Aufzeichnungskennung vorhanden
 ist. Die Garmin-FIT-Funktionen bleiben unverändert.
 
+## 0.1.25-beta – Strukturprüfung der tatsächlich gelieferten Speediance-Daten
+
+Damit wir den fehlenden Satzimport nicht weiter durch bloße API-Vermutungen ersetzen,
+gibt es nach **Trainings laden** eine neue Schaltfläche
+**Speediance-Datensatz prüfen…**. Genau eine Zeile markieren und anklicken.
+
+Die Anwendung protokolliert die **bereits empfangene** Struktur der ausgewählten
+Historien- bzw. Kalenderantwort, darunter Feldpfade, Typen und Listenlängen.
+Danach prüft sie ausschließlich lesend bis zu acht bereits bekannte
+Trainingsdetail-Routen/-Versionen und protokolliert deren **Antwortstruktur**
+(auch bei leeren Antworten). So können wir unterscheiden, ob die Historie
+bereits verschachtelte Übungsdaten enthält oder ein anderer Endpunkt nötig ist.
+
+Der Diagnoselauf zeigt am Ende automatisch **Diagnose anzeigen…**.
+Die relevanten Abschnitte beginnen mit
+`Selected Speediance workout API structure BEGIN` und enden mit
+`Selected Speediance workout API structure END`.
+Die Antwortwerte selbst werden **nicht** gespeichert oder protokolliert:
+keine Benutzernamen, Trainingstitel, Übungen, Wiederholungszahlen,
+Gewichte, Datumswerte, Token oder numerischen Trainingskennungen.
+Bitte das Protokoll trotzdem vor Weitergabe prüfen.
+
+**Diese Version ist eine Diagnose – kein belegter Fix des Satzabrufs.**
+Ob und wo das private Speediance-Backend wirklich abgeschlossene Sätze
+zurückliefert, muss anhand des echten ausgewählten Datensatzes geklärt werden.
+
 ## Windows-Installer
 
 GitHub → **Actions** → **Windows installer** → **Run workflow**. Nach einem erfolgreichen Lauf die Datei **SpeedianceFITExporter-Windows-Setup** unter **Artifacts** herunterladen und die darin enthaltene `SpeedianceFITExporter-Setup.exe` starten. Der Installer wird von GitHub auf Windows gebaut und benötigt beim Anwender kein Python. Eine nicht signierte EXE kann eine Windows-SmartScreen-Warnung auslösen.

@@ -1,4 +1,4 @@
-# Speediance FIT Exporter (Beta 0.1.24)
+# Speediance FIT Exporter (Beta 0.1.28)
 
 Lokale Windows-10/11-Anwendung zum Abruf abgeschlossener Speediance-Trainingseinheiten aus dem eigenen Account und zum Export als Garmin-FIT-Aktivitäten. Die Speediance-API ist **inoffiziell**; der Login ist ohne echten Testaccount nicht verifiziert.
 
@@ -586,6 +586,56 @@ Der Import erfordert **keine Änderung der Cloud-Trainingsdaten** und stellt
 keinen nachgewiesenen Fix des problematischen Detail-Endpunkts dar.
 Zur zuverlässigen Garmin-Connect-Anzeige ist ein echter manueller
 Importtest erforderlich.
+
+## 0.1.28-beta – GM-Manager-Workout-History-CSV als Satzquelle
+
+Der bisherige JSON-Import aus 0.1.27 liest einen **Trainingsplan**, der
+erst durch deine Bestätigung als tatsächlich absolviert behandelt werden
+darf. Der neue **History-CSV-Import** dagegen liest die vom GM Manager
+exportierte Historie der tatsächlich aufgezeichneten Trainingseinheit.
+
+**Ablauf:** Speediance-Training auswählen, **Mit Garmin abgleichen…**
+öffnen, unter Datenpriorität **GM-Manager-History-CSV wählen…** klicken
+und die originale History-CSV auswählen. Der Exporter verlangt
+*gleiches Trainingsdatum und gleichen Trainingsnamen*, genau eine
+CSV-Sitzungs-ID und eine passende Trainingsdauer. Erst nach Bestätigung
+werden die Zeilen als Satzquelle gewählt. Danach die originale
+Garmin-FIT wählen bzw. über die Personal API lesen und die
+**zusammengeführte FIT** speichern.
+
+**Referenztraining vom 16.11.2026 (nicht im Repository gespeichert):**
+9 verschiedene Übungen, **27 aufgezeichnete Satzzeilen** (19 Kraft,
+8 zeitbasiert), **184 Wiederholungen**, **6 separat erfasste
+Links-/Rechts-Dehnzeilen**. Die früher verwendete JSON-Vorlage
+enthält nur 24 Satzvorgaben und bildet diese Trennung nicht vollständig ab.
+
+**Bereits implementierte Schutzmaßnahmen bleiben erhalten:**
+- Das Garmin-FIT bleibt binäre Grundlage; originaler Garmin-HF-Verlauf,
+  Sensor- und Geräteinformationen bleiben nach gewählten Prioritäten
+  erhalten. Die vorhandenen Garmin-Sätze werden nur im neuen
+  Export ersetzt.
+- Die Gewichtskorrektur von **0.1.18** bleibt unverändert. Der
+  CSV-Importer verwendet **exakt das dokumentierte Gewicht pro Satz**
+  aus der Spalte Weight (kg); er verdoppelt **nicht** aufgrund des
+  aggregierten Satzvolumens. Set Volume (kg) wird lediglich
+  mit Session Volume (kg) auf Konsistenz geprüft.
+- Die CSV enthält **Satzdauern**, teilweise über die Notes-Angabe
+  "timed set: ... s", aber keine tatsächlichen Satzanfangszeiten.
+  Daher schätzt der FIT-Writer die zeitliche Position jedes Satzes.
+  Ein zeitbasierter Satz von 300 Sekunden wird nicht als 300
+  Kraftwiederholungen gezählt.
+- Die CSV-Satzwerte werden **nicht** als persönliche Speediance-API-
+  Messungen ausgegeben. Der Import bleibt eine vom Nutzer
+  ausgewählte lokale Quelle, erkennbar als gm_manager_history_csv.
+- Keine Rohdaten, Trainingsnamen, CSV-Pfade, Gewichte, IDs oder
+  Zugangsdaten in die Diagnose-Logs schreiben. Der Import greift
+  nicht schreibend auf Garmin Connect oder Speediance zu.
+
+**Grenzen:** Es findet noch keine Übernahme einzelner Satz-Wattwerte,
+Links-/Rechts-Leistungsverläufe oder per-Satz-Maximalpulswerte statt.
+Auch die originale CSV enthält keine exakten Zeitpunkte für die
+Satzanfänge. Die tatsächlich sichtbare Garmin-Connect-Darstellung
+muss weiterhin an einem echten manuellen Import überprüft werden.
 
 ## Windows-Installer
 

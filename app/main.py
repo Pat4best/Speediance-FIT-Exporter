@@ -412,7 +412,10 @@ class App(tk.Tk):
             return
 
         def job():
-            client = Client(logger, region=region, login_client_type=login_slot)
+            client = Client(
+                logger, region=region, login_client_type=login_slot,
+                cache_dir=DATA / "completed_training_cache",
+            )
             client.login(email, password)
             return client
 

@@ -1,4 +1,4 @@
-# Speediance FIT Exporter (Beta 0.1.13)
+# Speediance FIT Exporter (Beta 0.1.14)
 
 Lokale Windows-10/11-Anwendung zum Abruf abgeschlossener Speediance-Trainingseinheiten aus dem eigenen Account und zum Export als Garmin-FIT-Aktivitäten. Die Speediance-API ist **inoffiziell**; der Login ist ohne echten Testaccount nicht verifiziert.
 
@@ -137,6 +137,18 @@ Im **Übungen zuordnen…**-Fenster befindet sich jetzt oben rechts eine separat
 
 Referenz für die inoffizielle Speediance-Cloud-API und die Links-/Rechts-Telemetrie:
 https://github.com/labatt/speediance-mcp
+
+## 0.1.14 – Herzfrequenzkurve und HF-Sensor in Garmin Connect
+
+**Behobener HF-Parser:** Die Speediance-Cloud liefert eine gespeicherte Herzfrequenzkurve unter dem Feld `heartRates`, beispielsweise `{"heartRates":[96,110,128,142,158], "avgHeartRate":131, "maxHeartRate":158}`. Frühere Versionen erkannten dieses Feld nicht und importierten trotz HTTP 200 und aufgezeichneter Herzfrequenz **0 Messpunkte**. Ab 0.1.14 werden die Werte übernommen und die von Speediance gelieferten Durchschnitts- und Maximalwerte in die FIT-Zusammenfassung geschrieben.
+
+**Zeitliche Auflösung:** Wenn die API nur die BPM-Liste ohne Einzelzeitstempel liefert, werden die *Positionen* der echten Messwerte gleichmäßig über die Workout-Dauer verteilt; es werden keine zusätzlichen Pulswerte erfunden. Diese Zeitachsen-Schätzung ist in der Exportmeldung und im anonymisierten Diagnoseprotokoll als `estimated_timing=True` kenntlich gemacht. Der Verlauf kann sich dadurch gegenüber der originalen Speediance-Grafik zeitlich unterscheiden. Fehlen alle Messpunkte, wird aus den echten pro-Satz-Maxima nur der maximale Puls abgeleitet, **keine gefälschte Kurve oder Durchschnitts-HF**.
+
+**HF-Gerät in der FIT-Datei:** Der Exporter versucht, den Sensornamen aus ausdrücklich benannten Speediance-API-Feldern zu übernehmen. Wird nur in der Speediance-App die Datenquelle angezeigt (z. B. `HRM600:654360`), kann sie im Hauptfenster unter **HF-Sensor (optional)** einmal manuell eingetragen werden. Die Einstellung wird lokal gespeichert; sie dient nur als Rückfalllösung, wenn die Cloud keinen Gerätenamen liefert. Für den konkreten Eintrag wird `Garmin HRM 600` in der FIT-`device_info`-Nachricht als Gerät eingetragen, zusätzlich `HRM600:654360` als Beschreibung. Die Endziffern sind nicht verifiziert als Seriennummer und werden deshalb **nicht** als solche ausgegeben. Ohne eindeutige Daten setzen wir weder Garmin-Produkt-ID noch ANT-/Bluetooth-Protokoll. Ob Garmin Connect einen externen Sensor in der Aktivitätsansicht sichtbar anzeigt, richtet sich nach den Garmin-Importregeln.
+
+**Deutsch / English:** Die Sensor-Eingabe, Statusanzeige und Zeitachsenwarnung sind zweisprachig.
+
+Zum Überprüfen nach dem Upgrade das Training vom 16.11. erneut exportieren und die FIT-Datei in Garmin Connect importieren. Bereits importierte Aktivitäten werden nicht aktualisiert und können beim Import dupliziert werden.
 
 ## Windows-Installer
 

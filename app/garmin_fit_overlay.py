@@ -236,23 +236,30 @@ def overlay_garmin_fit(original, speediance, destination, priorities=None,
         start_ts + int(elapsed): int(bpm)
         for elapsed, bpm in merged["heart_rate_points"]
     }
-    # Canonical Speediance SET fields come from the tested FIT writer,
-    # or, on a transient API outage, the user's earlier direct Speediance FIT.
-    # In the latter case retain the original SET messages byte-for-byte.
+    # No set details: preserve native Garmin SET and EXERCISE_TITLE messages.
+    # Only actual completed Speediance sets may replace the watch's sets.
+    has_completed_sets = any(
+        exercise.get("sets") for exercise in speediance.get("exercises") or []
+    )
     if speediance_fit_bytes is not None:
         generated = parse_fit_wire(speediance_fit_bytes)
-    else:
+    elif has_completed_sets:
         with TemporaryDirectory(prefix="speediance-merge-") as folder:
             temp_path = write_fit(
                 merged, Path(folder) / "speediance-sets.fit",
                 overrides=overrides, weight_overrides=weight_overrides,
             )
             generated = parse_fit_wire(temp_path.read_bytes())
-    new_strength = [_from_message(entry)
-                    for entry in generated if entry["kind"] == "data"
-                    and entry["global"] in (225, 264)]
-    if not any(c["kind"] == "data" and c["global"] == 225 for c in generated):
-        raise GarminOverlayError("Keine aufgezeichneten Speediance-Sätze")
+    else:
+        generated = []
+    replace_native_sets = any(
+        entry["kind"] == "data" and entry["global"] == 225
+        for entry in generated
+    )
+    new_strength = ([_from_message(entry)
+                     for entry in generated if entry["kind"] == "data"
+                     and entry["global"] in (225, 264)]
+                    if replace_native_sets else [])
 
     native_times = set()
     original_counts = Counter()
@@ -303,7 +310,8 @@ def overlay_garmin_fit(original, speediance, destination, priorities=None,
         old_strength_index = next(
             (i for i, item in enumerate(wire)
              if item["kind"] == "data" and item["global"] == 20), len(wire))
-    additions[old_strength_index].extend(new_strength)
+    if replace_native_sets:
+        additions[old_strength_index].extend(new_strength)
 
     calories = merged.get("calories")
     summary = merged.get("heart_rate_summary") or {}
@@ -361,7 +369,7 @@ def overlay_garmin_fit(original, speediance, destination, priorities=None,
             out.extend(item["raw"])
             continue
         num = item["global"]
-        if num in (225, 264):
+        if replace_native_sets and num in (225, 264):
             # Garmin exercise titles refer to the original SETs and may
             # clash with the Speediance custom exercise-title mapping.
             continue
@@ -415,8 +423,9 @@ def overlay_garmin_fit(original, speediance, destination, priorities=None,
         "garmin_preserved_message_types": len(original_counts),
         "garmin_device_info": original_counts[23],
         "new_speediance_sets": expected_strength,
+        "preserved_native_sets": native_sets if not replace_native_sets else 0,
         "speediance_repetitions": actual_reps,
-        "replaced_garmin_sets": native_sets,
+        "replaced_garmin_sets": native_sets if replace_native_sets else 0,
         "added_hr_records": len(speed_only),
         "patched_hr_records": patched_hr,
         "output_bytes": len(result),

@@ -61,6 +61,24 @@ def save_language(language, root=DEFAULT_ROOT):
     _save(Path(root) / "settings.json", settings)
 
 
+def load_catalog_language(root=DEFAULT_ROOT):
+    """Exercise-picker locale, defaults to the app's chosen language."""
+    settings = _read(Path(root) / "settings.json")
+    value = settings.get("catalog_language")
+    if value in LANGUAGES:
+        return value
+    value = settings.get("language")
+    return value if value in LANGUAGES else "de"
+
+
+def save_catalog_language(language, root=DEFAULT_ROOT):
+    if language not in LANGUAGES:
+        raise ValueError("Unsupported catalog language")
+    settings = _read(Path(root) / "settings.json")
+    settings["catalog_language"] = language
+    _save(Path(root) / "settings.json", settings)
+
+
 def export_folder(root=DEFAULT_ROOT):
     value = _read(Path(root) / "settings.json").get("export_folder")
     return value if isinstance(value, str) else ""

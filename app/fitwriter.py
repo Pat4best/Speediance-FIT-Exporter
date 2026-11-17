@@ -75,6 +75,11 @@ def write_fit(workout, destination, overrides=None, weight_overrides=None):
     No GPS, heart-rate or cadence readings are made up.
     """
     start, end, duration = activity_bounds(workout)
+    sets = [
+        (ex.get("name") or "Übung", item)
+        for ex in workout.get("exercises", [])
+        for item in ex.get("sets", [])
+    ]
     duration_ms = duration * 1000
     start_ts = stamp(start)
     end_ts = stamp(start + timedelta(seconds=duration))

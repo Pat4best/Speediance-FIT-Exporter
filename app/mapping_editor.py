@@ -12,14 +12,21 @@ from garmin_catalog import (
     FULL_CATALOG_COUNT, all_options, category_filters,
     category_title, normalize_query, search_options,
 )
-from preferences import observed_names, remember_names, saved_mappings, set_override
+from preferences import (
+    observed_names, remember_names, saved_mappings, set_override,
+    load_catalog_language, save_catalog_language,
+)
+from i18n import translate
 
 
 class MappingEditor(tk.Toplevel):
     def __init__(self, parent, names=None):
         super().__init__(parent)
-        self.tr = parent.tr
-        self.language = parent.language.get()
+        self.language = load_catalog_language()
+        self.tr = lambda phrase: translate(self.language, phrase)
+        self.language_choice = tk.StringVar(
+            value="Deutsch" if self.language == "de" else "English"
+        )
         self.title(self.tr("Speediance → Garmin: Übungszuordnung"))
         self.geometry("%dx%d" % (
             min(1160, parent.winfo_screenwidth() - 70),
@@ -60,8 +67,19 @@ class MappingEditor(tk.Toplevel):
     def _build(self):
         frame = ttk.Frame(self, padding=12)
         frame.pack(fill="both", expand=True)
-        ttk.Label(frame, text=self.tr("Speediance → Garmin: Übungszuordnung"),
-                  font=("Segoe UI", 15, "bold")).pack(anchor="w", pady=(0, 5))
+        title_row = ttk.Frame(frame)
+        title_row.pack(fill="x", pady=(0, 5))
+        ttk.Label(title_row, text=self.tr("Speediance → Garmin: Übungszuordnung"),
+                  font=("Segoe UI", 15, "bold")).pack(side="left")
+        locale = ttk.Combobox(
+            title_row, textvariable=self.language_choice,
+            values=("Deutsch", "English"), state="readonly", width=11
+        )
+        locale.pack(side="right")
+        locale.bind("<<ComboboxSelected>>", self.change_picker_language)
+        ttk.Label(title_row, text=self.tr("Katalogsprache:")).pack(
+            side="right", padx=(0, 6)
+        )
         ttk.Label(
             frame,
             text=self.tr("Speediance-Übung links auswählen, rechts im vollständigen Garmin-Katalog suchen und die Zuordnung speichern."),
@@ -109,7 +127,7 @@ class MappingEditor(tk.Toplevel):
         right.columnconfigure(0, weight=1)
         right.rowconfigure(4, weight=1)
 
-        ttk.Label(right, text=self.tr("Suchbegriff (z. B. bench, fly, lat, stretch):")).grid(
+        ttk.Label(right, text=self.tr("Suchbegriff (z. B. Bankdrücken / bench, Kreuzheben / deadlift):")).grid(
             row=0, column=0, sticky="w")
         self.search_entry = ttk.Entry(right, textvariable=self.query)
         self.search_entry.grid(row=1, column=0, sticky="ew", pady=(4, 6))
@@ -174,6 +192,47 @@ class MappingEditor(tk.Toplevel):
                    command=self.remove).pack(side="left", padx=(8, 0))
         ttk.Button(controls, text=self.tr("Schließen"),
                    command=self.destroy).pack(side="right")
+
+    def change_picker_language(self, event=None):
+        """Switch the exercise picker DE/EN in place, preserving current work."""
+        selected = "en" if self.language_choice.get() == "English" else "de"
+        if selected == self.language:
+            return
+        try:
+            save_catalog_language(selected)
+        except OSError:
+            messagebox.showwarning(
+                self.tr("Zuordnung"),
+                self.tr("Katalogsprache konnte nicht gespeichert werden."),
+                parent=self,
+            )
+        category_id = self.filter_lookup.get(self.category_choice.get())
+        current = self.selected_name
+        old_codes = (self.category.get(), self.subtype.get())
+        self.language = selected
+        self.filters = [(self.tr("Alle Kategorien"), None)] + list(
+            category_filters(self.language)
+        )
+        self.filter_lookup = dict(self.filters)
+        self.category_choice.set(next(
+            (label for label, cat in self.filters if cat == category_id),
+            self.filters[0][0],
+        ))
+        for widget in self.winfo_children():
+            widget.destroy()
+        self._build()
+        self._refresh_left(selected=current)
+        self._refresh_results()
+        self.current.set(current or self.tr("Noch keine Übung ausgewählt"))
+        self.category.set(old_codes[0])
+        self.subtype.set(old_codes[1])
+        if all(old_codes):
+            self.assigned_label.set(
+                self._label_for_codes(int(old_codes[0]), int(old_codes[1]))
+            )
+        else:
+            self.assigned_label.set(self.tr("Noch keine Garmin-Übung gewählt"))
+        self.toggle_manual()
 
     def _refresh_left(self, selected=None):
         search = normalize_query(self.left_search.get())

@@ -181,3 +181,22 @@ def set_weight_multiplier(name, multiplier, root=DEFAULT_ROOT):
     names.add(name.strip())
     data["names"] = sorted(names)
     _save(path, data)
+
+
+def saved_merge_priorities(root=DEFAULT_ROOT):
+    """No secret material: preferred source for each merged FIT metric."""
+    from garmin_merge import DEFAULT_PRIORITIES, check_priorities
+    found = _read(Path(root) / "settings.json").get("merge_priorities")
+    if not isinstance(found, dict):
+        return dict(DEFAULT_PRIORITIES)
+    safe = {k: v for k, v in found.items()
+            if k in DEFAULT_PRIORITIES and v in ("garmin", "speediance")}
+    return check_priorities(safe)
+
+
+def save_merge_priorities(priorities, root=DEFAULT_ROOT):
+    from garmin_merge import check_priorities
+    cleaned = check_priorities(priorities)
+    settings = _read(Path(root) / "settings.json")
+    settings["merge_priorities"] = cleaned
+    _save(Path(root) / "settings.json", settings)

@@ -189,6 +189,24 @@ class GarminOverlayTests(unittest.TestCase):
         self.assertEqual(all_message_data(result, 23),
                          all_message_data(original_garmin_fit(), 23))
 
+    def test_timed_exercises_do_not_inflate_repetition_summary(self):
+        speed = speediance_executed()
+        speed["exercises"].append({
+            "name": "Cardio ski timed",
+            "completion_method": 2,
+            "sets": [{"reps": 300, "weight": 0, "seconds": 300}],
+        })
+        # Timed sets still exist as Speediance SET messages but 300 seconds
+        # must not become 300 completed strength repetitions.
+        with TemporaryDirectory() as folder:
+            file, meta = overlay_garmin_fit(
+                original_garmin_fit(), speed,
+                Path(folder) / "timed-ski.fit")
+            session = values(file.read_bytes(), 18)[0]
+        self.assertEqual(meta["new_speediance_sets"], 3)
+        self.assertEqual(meta["speediance_repetitions"], 20)
+        self.assertEqual(session[10][1], 20)
+
     def test_original_garmin_file_never_modified(self):
         original = original_garmin_fit()
         with TemporaryDirectory() as folder:

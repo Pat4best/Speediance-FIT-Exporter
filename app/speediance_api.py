@@ -12,6 +12,7 @@ from urllib.parse import quote
 from heart_rate import graph_details, graph_shape, valid_bpm
 from hr_sensor import find_hr_sensor
 from weight_handling import set_weight
+from activity_time import activity_bounds
 
 HOSTS = {"EU": "euapi.speediance.com", "Global": "api2.speediance.com"}
 ROUTES = {
@@ -301,8 +302,11 @@ class Client:
                     stat["outside"] += 1
                     continue
                 if tid in items:
-                    # Calendar lacks watchType and optional sensor metadata.
+                    # History can contain the real clock start of a workout
+                    # already discovered through the month calendar.
                     items[tid]["watch_type"] = record.get("watchType") or 0
+                    if record.get("startTime"):
+                        items[tid]["started_at"] = record["startTime"]
                     sensor = find_hr_sensor(record)
                     if sensor:
                         items[tid]["hr_sensor"] = sensor
@@ -331,6 +335,7 @@ class Client:
                     "unit": self.unit,
                     "device_type": self.device,
                     "source": "history",
+                    "started_at": record.get("startTime"),
                     "watch_type": record.get("watchType") or 0,
                     "hr_sensor": find_hr_sensor(record),
                 }
@@ -433,8 +438,17 @@ class Client:
                     quote(recording_uuid, safe=""),
                     allow_error=True,
                 )
+                activity_start, _, duration = activity_bounds(
+                    dict(workout, exercises=exercises)
+                )
+                local_clock = activity_start.astimezone()
+                day_seconds = (local_clock.hour * 3600 +
+                               local_clock.minute * 60 +
+                               local_clock.second)
                 parsed = graph_details(
-                    graph, duration_seconds=float(workout.get("duration_min") or 0) * 60
+                    graph, duration_seconds=duration,
+                    start_epoch=activity_start.timestamp(),
+                    start_day_seconds=day_seconds,
                 )
                 heart_points = parsed["points"]
                 timing_estimated = parsed["timing_estimated"]
@@ -444,9 +458,11 @@ class Client:
                 sensor = sensor or find_hr_sensor(graph)
                 self.logger.info(
                     "Heart-rate graph: %d measured samples; format=%s "
-                    "raw_samples=%d estimated_timing=%s; summary=%s",
+                    "raw_samples=%d time_mode=%s skipped_time=%d "
+                    "estimated_timing=%s; summary=%s",
                     len(heart_points), parsed["series_format"],
-                    parsed["raw_sample_count"], timing_estimated,
+                    parsed["raw_sample_count"], parsed["time_mode"],
+                    parsed["skipped_time_points"], timing_estimated,
                     "yes" if parsed["summary"] else "no"
                 )
                 if not heart_points and parsed["raw_sample_count"]:

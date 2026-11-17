@@ -118,8 +118,11 @@ def write_fit(workout, destination, overrides=None, weight_overrides=None):
     # Strength sessions are stationary; distance is always 0 m, no fake HR.
     enc.mesg(20, [(253, 0x86, start_ts), (5, 0x86, 0)])
 
-    cursor = start
-    remaining = duration
+    strength_offset = int(workout.get("strength_start_offset") or 0)
+    if not 0 <= strength_offset < duration:
+        raise ValueError("Speediance sets would begin outside selected activity times")
+    cursor = start + timedelta(seconds=strength_offset)
+    remaining = duration - strength_offset
     mapping_cache = {}
     unknown_names = []
     events = []  # FIT record and set messages, sorted by timestamp.
@@ -192,7 +195,8 @@ def write_fit(workout, destination, overrides=None, weight_overrides=None):
     if accepted_hr:
         if avg_hr is None:
             avg_hr = int(round(sum(accepted_hr) / len(accepted_hr)))
-        max_hr = max([max_hr or 0] + accepted_hr)
+        if not workout.get("respect_hr_summary") or max_hr is None:
+            max_hr = max([max_hr or 0] + accepted_hr)
     lap_hr_fields = []
     session_hr_fields = []
     if avg_hr is not None:

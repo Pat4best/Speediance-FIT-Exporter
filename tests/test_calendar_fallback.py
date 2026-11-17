@@ -36,6 +36,8 @@ class CalendarTests(unittest.TestCase):
     def test_old_api_restores_monday_workout_without_duplicates(self):
         seen_versions = []
         def fake(path, **kwargs):
+            if "userTrainingDataRecord" in path:
+                return []
             version = kwargs["read_version"]
             seen_versions.append(version)
             if version == "41000":
@@ -54,6 +56,8 @@ class CalendarTests(unittest.TestCase):
 
     def test_other_device_filter_restores_missing_monday_training(self):
         def fake(path, **kwargs):
+            if "userTrainingDataRecord" in path:
+                return []
             # Gym Monster calendar does not show the Nov 16 workout.
             if "selectedDeviceType=1" in path:
                 return [day("2026-11-13", workout(100, "Intro"))]
@@ -67,6 +71,8 @@ class CalendarTests(unittest.TestCase):
 
     def test_previous_api_failure_does_not_hide_current_activities(self):
         def fake(path, **kwargs):
+            if "userTrainingDataRecord" in path:
+                return []
             if kwargs["read_version"] == "40304":
                 raise APIError("Unsupported")
             return [day("2026-11-16", workout(101, "Workout"))]
@@ -77,6 +83,8 @@ class CalendarTests(unittest.TestCase):
 
     def test_first_version_failure_does_not_hide_old_calendar(self):
         def fake(path, **kwargs):
+            if "userTrainingDataRecord" in path:
+                return []
             return [] if kwargs["read_version"] == "41000" else [
                 day("2026-11-16T00:00:00", workout("101", "Workout", status="1"))
             ]

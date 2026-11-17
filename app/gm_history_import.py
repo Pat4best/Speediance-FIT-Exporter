@@ -18,7 +18,7 @@ MAX_SESSION_SETS = 500
 REQUIRED = {
     "Date", "Workout", "Session ID", "Exercise", "Exercise ID",
     "Set", "Weight (kg)", "Reps", "Notes", "Session Duration (s)",
-    "Set Duration (s)", "Set Volume (kg)",
+    "Set Duration (s)", "Set Volume (kg)", "Session Volume (kg)", "Side",
 }
 TIMED = re.compile(r"timed set:\s*([0-9]+(?:\.[0-9]+)?)\s*s\b", re.I)
 SAFE_NOTE_SIDE = {"L": "links", "R": "rechts"}
@@ -87,7 +87,7 @@ def parse_gm_history_csv(payload, selected):
         raise GMHistoryCSVError(
             "Kein eindeutiges Training mit passendem Datum und Namen in der CSV gefunden"
         )
-    session_ids = {r["Session ID"].strip() for r in matching}
+    session_ids = {str(r.get("Session ID") or "").strip() for r in matching}
     if len(session_ids) != 1 or not next(iter(session_ids)):
         raise GMHistoryCSVError("Mehrdeutige Trainingseinheiten in der History-CSV")
     if len(matching) > MAX_SESSION_SETS:
@@ -114,14 +114,14 @@ def parse_gm_history_csv(payload, selected):
     total_reps = 0
     volume_total = 0.0
     for row in matching:
-        exercise_id = row["Exercise ID"].strip()
-        name = row["Exercise"].strip()
+        exercise_id = str(row.get("Exercise ID") or "").strip()
+        name = str(row.get("Exercise") or "").strip()
         if not name or not exercise_id:
             raise GMHistoryCSVError("Übungsname oder Kennung fehlt")
         set_num = _int(row["Set"], "Set", 500)
         if set_num < 1:
             raise GMHistoryCSVError("Ungültige Satznummer")
-        side = row.get("Side", "").strip().upper()
+        side = str(row.get("Side") or "").strip().upper()
         if side not in ("", "L", "R"):
             raise GMHistoryCSVError("Unbekannte Satzseite in der CSV")
         # Preserve left/right as separate FIT sets and distinguish their

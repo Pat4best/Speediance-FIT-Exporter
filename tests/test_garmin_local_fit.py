@@ -18,6 +18,8 @@ from garmin_local_fit import (
     match_local_garmin_fit, validated_local_fit,
 )
 from speediance_api import Client, APIError
+from garmin_saved_speediance import SavedSpeedianceFitError, load_saved_speediance_fit
+from test_fit_profile import decode
 from test_garmin_fit_overlay import original_garmin_fit, speediance_executed
 
 
@@ -93,6 +95,62 @@ class LocalGarminFileTests(unittest.TestCase):
             got, _, _ = validated_local_fit(speediance_executed(), src)
             overlay_garmin_fit(got, speediance_executed(), Path(td) / "new.fit")
             self.assertEqual(src.read_bytes(), raw)
+
+
+class SavedSpeedianceFallbackTests(unittest.TestCase):
+    def test_offline_previously_exported_strength_fit_supplies_actual_sets(self):
+        with TemporaryDirectory() as td:
+            speed_source = Path(td) / "Speediance_2026-11-16.fit"
+            write_fit(speediance_executed(), speed_source)
+            original_speed = speed_source.read_bytes()
+            restored, source = load_saved_speediance_fit(
+                speediance_executed(), speed_source
+            )
+            self.assertEqual(source, original_speed)
+            self.assertEqual(len(restored["exercises"][0]["sets"]), 2)
+            self.assertEqual(
+                [x["weight"] for x in restored["exercises"][0]["sets"]],
+                [20.0, 20.0],
+            )
+            result_path, meta = overlay_garmin_fit(
+                original_garmin_fit(), restored,
+                Path(td) / "garmin-based-merge.fit",
+                speediance_fit_bytes=source,
+            )
+            result = decode(result_path.read_bytes())
+            sets = [fields for num, fields in result if num == 225]
+            self.assertEqual(len(sets), 2)
+            self.assertEqual([f[4][1] / 16 for f in sets], [20.0, 20.0])
+            self.assertEqual(meta["speediance_source"], "saved_fit")
+            self.assertEqual(meta["garmin_device_info"], 1)
+            self.assertEqual(meta["speediance_repetitions"], 20)
+            self.assertEqual(speed_source.read_bytes(), original_speed)
+
+    def test_reject_unrelated_speediance_workout_id(self):
+        with TemporaryDirectory() as td:
+            p = Path(td) / "other-speediance.fit"
+            write_fit(speediance_executed(), p)
+            other = dict(speediance_executed(), training_id=999999)
+            with self.assertRaisesRegex(SavedSpeedianceFitError,
+                                        "anderen Trainingseinheit"):
+                load_saved_speediance_fit(other, p)
+
+    def test_reject_garmin_original_misidentified_as_speediance(self):
+        with TemporaryDirectory() as td:
+            p = Path(td) / "fenix.fit"
+            p.write_bytes(original_garmin_fit())
+            with self.assertRaises(SavedSpeedianceFitError):
+                load_saved_speediance_fit(speediance_executed(), p)
+
+    def test_reject_corrupt_saved_speediance_fit(self):
+        with TemporaryDirectory() as td:
+            p = Path(td) / "speediance.fit"
+            write_fit(speediance_executed(), p)
+            damaged = bytearray(p.read_bytes())
+            damaged[-1] ^= 1
+            p.write_bytes(damaged)
+            with self.assertRaises(SavedSpeedianceFitError):
+                load_saved_speediance_fit(speediance_executed(), p)
 
 
 class LegacyCompletedSetReadTests(unittest.TestCase):

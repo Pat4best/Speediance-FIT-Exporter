@@ -34,12 +34,12 @@ class GarminMergeDialog(tk.Toplevel):
         self.garmin_client = None
         self.local_fit_bytes = None
         self.source_verified = None
-        self.title(app.tr("Garmin Personal API – Abgleich und FIT-Merge"))
+        self.title(app.tr("Garmin-FIT-Quellen – Abgleich und Merge"))
         self.transient(app)
-        w = min(790, max(600, app.winfo_screenwidth() - 80))
-        h = min(640, max(530, app.winfo_screenheight() - 110))
+        w = min(850, max(640, app.winfo_screenwidth() - 80))
+        h = min(730, max(650, app.winfo_screenheight() - 70))
         self.geometry("%dx%d" % (w, h))
-        self.minsize(600, 530)
+        self.minsize(640, 600)
         self.protocol("WM_DELETE_WINDOW", self._close)
         self._build()
         self.grab_set()

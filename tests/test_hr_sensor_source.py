@@ -9,9 +9,8 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "app"))
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 from heart_rate import graph_details, graph_points
-from hr_sensor import find_hr_sensor, user_confirmed_sensor
+from hr_sensor import find_hr_sensor
 from fitwriter import write_fit
-from preferences import save_hr_sensor_name, load_hr_sensor_name
 from speediance_api import Client
 from test_fit_profile import decode
 from i18n import translate
@@ -38,13 +37,12 @@ class HRSourceTests(unittest.TestCase):
         self.assertEqual(got["points"], [(0, 120), (8, 145)])
         self.assertFalse(got["timing_estimated"])
 
-    def test_user_confirmed_hrm600_is_not_given_fake_serial(self):
-        info = user_confirmed_sensor("HRM600:654360")
-        self.assertEqual(info["name"], "Garmin HRM 600")
-        self.assertEqual(info["descriptor"], "HRM600:654360")
-        self.assertEqual(info["manufacturer"], "Garmin")
-        self.assertEqual(info["verified_from"], "user_confirmed")
-        self.assertNotIn("serial", info)
+    def test_only_reported_sensor_is_exported(self):
+        info = find_hr_sensor({
+            "heartRateDeviceName": "Garmin HRM 600",
+        })
+        self.assertIsNotNone(info)
+        self.assertEqual(info["verified_from"], "speediance_metadata")
         with TemporaryDirectory() as td:
             out = write_fit({
                 "day": "2026-11-16", "duration_min": 1,
@@ -56,14 +54,25 @@ class HRSourceTests(unittest.TestCase):
             messages = decode(out.read_bytes())
             devices = [fields for n, fields in messages if n == 23]
             self.assertEqual(len(devices), 1)
-            self.assertEqual(devices[0][19][1], "HRM600:654360")
             self.assertEqual(devices[0][27][1], "Garmin HRM 600")
             self.assertEqual(devices[0][2][1], 1)
-            self.assertNotIn(3, devices[0])  # do not falsify a serial number
-            self.assertNotIn(4, devices[0])  # unknown Garmin product ID
+            self.assertNotIn(3, devices[0])  # no guessed serial number
+            self.assertNotIn(4, devices[0])  # no guessed product ID
             session = next(f for n, f in messages if n == 18)
             self.assertEqual(session[16][1], 110)
             self.assertEqual(session[17][1], 146)
+
+    def test_manual_device_label_is_not_accepted_as_verified_source(self):
+        with TemporaryDirectory() as td:
+            out = write_fit({
+                "day": "2026-11-16", "duration_min": 1,
+                "hr_sensor": {
+                    "name": "Garmin HRM 600",
+                    "verified_from": "user_confirmed",
+                },
+                "exercises": [],
+            }, Path(td) / "h.fit")
+            self.assertFalse(any(n == 23 for n, _ in decode(out.read_bytes())))
 
     def test_no_sensor_is_not_invented_from_a_watch_type_or_pulse(self):
         self.assertIsNone(find_hr_sensor({
@@ -82,13 +91,6 @@ class HRSourceTests(unittest.TestCase):
             "protocol": "BLE",
         })["protocol"], "ble")
         self.assertIsNone(find_hr_sensor({"name": "random unrelated device"}))
-
-    def test_sensor_setting_persists_and_is_translated(self):
-        with TemporaryDirectory() as td:
-            root = Path(td)
-            save_hr_sensor_name("HRM600:654360", root)
-            self.assertEqual(load_hr_sensor_name(root), "HRM600:654360")
-        self.assertEqual(translate("en", "HF-Sensor (optional):"), "HR sensor (optional):")
 
     def test_client_with_real_graph_fixture(self):
         client = Client(logging.getLogger("test-hr-source"))

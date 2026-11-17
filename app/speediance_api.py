@@ -7,6 +7,10 @@ import json
 import time
 import urllib.error
 import urllib.request
+from urllib.parse import quote
+
+from heart_rate import graph_points
+from weight_handling import set_weight
 
 HOSTS = {"EU": "euapi.speediance.com", "Global": "api2.speediance.com"}
 ROUTES = {
@@ -350,13 +354,18 @@ class Client:
         routes = list(dict.fromkeys(preferred + ALL_ROUTES))
         self.logger.info("Fetching session details using up to %d routes", len(routes))
         raw = []
+        recording_uuid = None
         for route in routes:
             candidate = self.request(
                 "/api/app/trainingInfo/%s/%d" % (route, workout["training_id"]),
                 allow_error=True,
             )
             if isinstance(candidate, dict):
-                # Newer API variants may wrap the exercise list.
+                # Free Lift and other variant APIs can carry a session UUID
+                # on the response wrapper.
+                candidate_uuid = candidate.get("uuid")
+                if candidate_uuid and isinstance(candidate_uuid, str):
+                    recording_uuid = candidate_uuid
                 candidate = next((candidate[key] for key in (
                     "list", "records", "data", "trainingInfoDetailList", "exerciseList")
                     if isinstance(candidate.get(key), list)), [])
@@ -376,20 +385,34 @@ class Client:
             sets = []
             for s in (ex.get("finishedReps") or []):
                 detail = s.get("trainingInfoDetail") or {}
-                weights = []
-                for weight in (detail.get("weights") or []):
-                    try:
-                        weights.append(float(weight))
-                    except (ValueError, TypeError):
-                        pass
+                if not recording_uuid and isinstance(detail.get("uuid"), str):
+                    recording_uuid = detail["uuid"]
+                weight, already_total = set_weight(detail, s)
                 sets.append({
                     "reps": s.get("finishedCount") or 0,
                     "seconds": s.get("time") or 0,
-                    "weight": max(weights) if weights else 0,
+                    "weight": weight,
+                    "weight_already_total": already_total,
                 })
             exercises.append({"name": ex.get("actionLibraryName") or "Übung", "sets": sets})
         count = sum(len(e["sets"]) for e in exercises)
         self.logger.info("Loaded %d exercises and %d sets", len(exercises), count)
         if not count:
             raise APIError("Speediance hat für dieses Training keine Sätze geliefert")
-        return dict(workout, exercises=exercises)
+        heart_points = []
+        if recording_uuid:
+            # Read-only cloud request with existing Bike/Nano session.
+            # Do not log the UUID, response or any heart-rate measurement.
+            graph = self.request(
+                "/api/app/watchMsg/getHeartRateGraph?uuid=%s" %
+                quote(recording_uuid, safe=""),
+                allow_error=True,
+            )
+            heart_points = graph_points(graph)
+            self.logger.info(
+                "Heart-rate graph: %d measured samples",
+                len(heart_points)
+            )
+        else:
+            self.logger.info("Heart-rate graph unavailable: recording UUID missing")
+        return dict(workout, exercises=exercises, heart_rate_points=heart_points)

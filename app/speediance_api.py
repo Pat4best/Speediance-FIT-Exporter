@@ -131,99 +131,125 @@ class Client:
         self.logger.info("Login successful")
 
     def list_workouts(self, start, end):
-        """Merge read-only calendar results across two known app version headers.
+        """Merge the documented Gym Monster and Gym Pal calendar views.
 
-        The old app (40304) displayed sessions later absent with 41000.
-        Use the existing Bike/Nano login token; NEVER log into the phone slot
-        to retrieve fallback data. Deduplicate by Speediance training ID.
+        Speediance may filter workouts by selectedDeviceType and by API version.
+        Both requests are read-only and reuse our Bike/Nano session; they NEVER
+        log in again as a phone. De-duplicate finished workouts by trainingId.
         """
         if end < start:
             raise ValueError("Ungültiger Zeitraum")
         items = {}
         self.calendar_fallback_added = 0
+        self.calendar_other_device_added = 0
+        self.calendar_query_stats = []
         year, month = start.year, start.month
+        device_types = (self.device, 2 if self.device == 1 else 1)
         while (year, month) <= (end.year, end.month):
-            path = "/api/app/v5/trainingCalendar/monthNew?date=%d-%02d&selectedDeviceType=%d" % (
-                year, month, self.device
-            )
             valid_responses = 0
-            for version in READ_VERSIONS:
-                try:
-                    days = self.request(path, read_version=version)
-                except APIError:
-                    self.logger.warning("Calendar read failed, version=%s", version)
-                    continue
-                if days is None:
-                    self.logger.warning("Calendar returned no data, version=%s", version)
-                    continue
-                if not isinstance(days, list):
-                    self.logger.warning("Unexpected calendar data structure, version=%s", version)
-                    continue
-                valid_responses += 1
-                added = 0
-                skipped = 0
-                for day in days:
-                    if not isinstance(day, dict):
-                        skipped += 1
-                        continue
+            for device_type in device_types:
+                path = "/api/app/v5/trainingCalendar/monthNew?date=%d-%02d&selectedDeviceType=%d" % (
+                    year, month, device_type
+                )
+                for version in READ_VERSIONS:
                     try:
-                        # Some API responses include an ISO time after the date.
-                        day_date = date.fromisoformat(str(day["date"])[:10])
-                    except (ValueError, KeyError, TypeError):
-                        skipped += 1
+                        days = self.request(path, read_version=version)
+                    except APIError:
+                        self.logger.warning(
+                            "Calendar request failed month=%04d-%02d device=%d version=%s",
+                            year, month, device_type, version
+                        )
                         continue
-                    if not start <= day_date <= end:
+                    if not isinstance(days, list):
+                        self.logger.warning(
+                            "Calendar invalid response month=%04d-%02d device=%d version=%s",
+                            year, month, device_type, version
+                        )
                         continue
-                    plans = day.get("trainingPlanList") or []
-                    if not isinstance(plans, list):
-                        skipped += 1
-                        continue
-                    for plan in plans:
-                        if not isinstance(plan, dict):
-                            skipped += 1
-                            continue
-                        # Calendar can also contain scheduled, unfinished plans.
-                        if plan.get("isFinish") not in (1, True, "1", "true", "True"):
+                    valid_responses += 1
+                    added = 0
+                    duplicates = 0
+                    unfinished = 0
+                    skipped = 0
+                    candidate_count = 0
+                    for day in days:
+                        if not isinstance(day, dict):
                             skipped += 1
                             continue
                         try:
-                            training_id = int(plan["trainingId"])
-                            if training_id <= 0:
-                                skipped += 1
-                                continue
-                        except (ValueError, TypeError, KeyError):
+                            day_date = date.fromisoformat(str(day["date"])[:10])
+                        except (ValueError, KeyError, TypeError):
                             skipped += 1
                             continue
-                        if training_id in items:
+                        if not start <= day_date <= end:
                             continue
-                        items[training_id] = {
-                            "training_id": training_id,
-                            "day": day_date.isoformat(),
-                            "title": plan.get("title") or "Training",
-                            "finished_at": plan.get("finishTime"),
-                            "duration_min": plan.get("durationMinute") or 0,
-                            "calories": plan.get("calorie") or 0,
-                            "type": plan.get("type") or 0,
-                            "unit": self.unit,
-                        }
-                        added += 1
-                        if version == "40304":
-                            self.calendar_fallback_added += 1
-                # Aggregates only: no training titles, IDs or personal data in logs.
-                self.logger.info(
-                    "Calendar %04d-%02d version=%s days=%d added=%d skipped=%d",
-                    year, month, version, len(days), added, skipped
-                )
+                        plans = day.get("trainingPlanList") or []
+                        if not isinstance(plans, list):
+                            skipped += 1
+                            continue
+                        candidate_count += len(plans)
+                        for plan in plans:
+                            if not isinstance(plan, dict):
+                                skipped += 1
+                                continue
+                            if plan.get("isFinish") not in (1, True, "1", "true", "True"):
+                                unfinished += 1
+                                continue
+                            try:
+                                training_id = int(plan["trainingId"])
+                                if training_id <= 0:
+                                    skipped += 1
+                                    continue
+                            except (ValueError, TypeError, KeyError):
+                                skipped += 1
+                                continue
+                            if training_id in items:
+                                duplicates += 1
+                                continue
+                            items[training_id] = {
+                                "training_id": training_id,
+                                "day": day_date.isoformat(),
+                                "title": plan.get("title") or "Training",
+                                "finished_at": plan.get("finishTime"),
+                                "duration_min": plan.get("durationMinute") or 0,
+                                "calories": plan.get("calorie") or 0,
+                                "type": plan.get("type") or 0,
+                                "unit": self.unit,
+                                "device_type": device_type,
+                            }
+                            added += 1
+                            if version == READ_VERSIONS[-1]:
+                                self.calendar_fallback_added += 1
+                            if device_type != self.device:
+                                self.calendar_other_device_added += 1
+                    self.calendar_query_stats.append({
+                        "month": "%04d-%02d" % (year, month),
+                        "device": device_type, "version": version,
+                        "days": len(days), "candidates": candidate_count,
+                        "added": added, "duplicates": duplicates,
+                        "unfinished": unfinished, "skipped": skipped,
+                    })
+                    # Aggregates only: no dates of workouts, titles or training IDs.
+                    self.logger.info(
+                        "Calendar month=%04d-%02d device=%d version=%s days=%d "
+                        "candidates=%d added=%d duplicates=%d unfinished=%d skipped=%d",
+                        year, month, device_type, version, len(days),
+                        candidate_count, added, duplicates, unfinished, skipped
+                    )
             if not valid_responses:
-                raise APIError("Speediance-Kalender konnte für %04d-%02d nicht geladen werden" %
-                               (year, month))
+                raise APIError(
+                    "Speediance-Kalender für %04d-%02d ist derzeit nicht verfügbar" %
+                    (year, month)
+                )
             year, month = (year + 1, 1) if month == 12 else (year, month + 1)
         result = list(items.values())
         result.sort(key=lambda w: (
             w["day"], str(w["finished_at"] or ""), w["training_id"]
         ), reverse=True)
-        self.logger.info("Loaded %d completed workouts (%d recovered via legacy calendar)",
-                         len(result), self.calendar_fallback_added)
+        self.logger.info(
+            "Loaded %d completed workouts; recovered=%d via old API and %d via other device",
+            len(result), self.calendar_fallback_added, self.calendar_other_device_added
+        )
         return result
 
     def detail(self, workout):

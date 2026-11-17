@@ -365,14 +365,24 @@ class Client:
         # Safely try alternative read-only endpoints before declaring no details.
         preferred = ROUTES.get(workout.get("type"), [])
         routes = list(dict.fromkeys(preferred + ALL_ROUTES))
-        self.logger.info("Fetching session details using up to %d routes", len(routes))
+        # The Speediance backend sometimes rejects the same completed-set
+        # detail with an app code (observed 100041) while returning the
+        # workout in the calendar. Try the older *read-only* version headers
+        # after the ordinary routes fail. No additional logins or POSTs.
+        variants = [(route, None) for route in routes]
+        variants.extend((route, READ_VERSIONS[-1]) for route in routes)
+        self.logger.info(
+            "Fetching session details using up to %d routes and %d "
+            "read-only API version variants", len(routes), len(variants)
+        )
         raw = []
         recording_uuid = None
         sensor_detail = None
-        for route in routes:
+        for route, version in variants:
             candidate = self.request(
                 "/api/app/trainingInfo/%s/%d" % (route, workout["training_id"]),
                 allow_error=True,
+                read_version=version,
             )
             candidate_sensor = find_hr_sensor(candidate)
             candidate_uuid = (candidate.get("uuid") if isinstance(candidate, dict) else None)
@@ -391,7 +401,11 @@ class Client:
                 sensor_detail = candidate_sensor or find_hr_sensor(candidate)
                 recording_uuid = candidate_uuid if isinstance(candidate_uuid, str) else None
                 break
-            self.logger.info("Detail endpoint returned no completed sets; trying fallback")
+            self.logger.info(
+                "Detail endpoint returned no completed sets; trying fallback "
+                "(legacy_read_version=%s)",
+                "yes" if version is not None else "no"
+            )
         if not isinstance(raw, list) or not raw:
             self.logger.warning("No exercise details after trying %d endpoints", len(routes))
             raise APIError("Speediance hat für diese Trainingseinheit keine Übungsdetails geliefert")

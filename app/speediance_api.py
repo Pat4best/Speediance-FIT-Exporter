@@ -4,6 +4,7 @@ Never log request payloads, headers, full responses or account IDs.
 """
 from datetime import date, datetime, timedelta
 import json
+import re
 import time
 import urllib.error
 import urllib.request
@@ -42,6 +43,27 @@ READ_VERSIONS = ("41000", "40304")  # Current and previously working calendar AP
 
 class APIError(Exception):
     pass
+
+
+_SAFE_COMPLETED_RECORD_ID = re.compile(r"[A-Za-z0-9_.-]{1,120}\Z")
+
+
+def completed_record_reference(record):
+    """Retain the session deep-link recordId in memory only, never in logs.
+
+    This value comes from the completed session history, not a calendar
+    template. A safe identifier can be investigated on existing GET routes.
+    """
+    if not isinstance(record, dict):
+        return None
+    link = record.get("aiEntryPageReq")
+    if not isinstance(link, dict):
+        return None
+    params = link.get("trainingParam")
+    if not isinstance(params, dict):
+        return None
+    value = params.get("recordId")
+    return value if isinstance(value, str) and _SAFE_COMPLETED_RECORD_ID.fullmatch(value) else None
 
 
 # Presence-only diagnostics: a different history 'id' is not necessarily a
@@ -398,6 +420,7 @@ class Client:
                     calendar_kind = items[tid].get("type")
                     items[tid]["history_type"] = shape["history_type"]
                     items[tid]["_history_response_shape"] = structural_log(record)
+                    items[tid]["_completed_record_id"] = completed_record_reference(record)
                     self.logger.info(
                         "History/calendar cross-reference (not selected workout): "
                         "history_fields=%s id_vs_trainingId=%s "
@@ -444,6 +467,7 @@ class Client:
                     "watch_type": record.get("watchType") or 0,
                     "hr_sensor": find_hr_sensor(record),
                     "_history_response_shape": structural_log(record),
+                    "_completed_record_id": completed_record_reference(record),
                 }
                 stat["added"] += 1
             self.history_added = stat["added"]
@@ -533,12 +557,58 @@ class Client:
                     and len(ex["finishedReps"]) > 0
                     for ex in response
                 ))
+        # The completed session history also contains a deep-link recordId.
+        # This probe is deliberately read-only and diagnostic only. Do not
+        # promote data from an unverified alternative key to an exported set.
+        record_id = workout.get("_completed_record_id")
+        eligible = bool(
+            isinstance(record_id, str)
+            and _SAFE_COMPLETED_RECORD_ID.fullmatch(record_id)
+            and record_id != str(workout.get("training_id"))
+        )
         self.logger.info(
-            "Selected Speediance workout API structure END checked=%d responses_with_completed_sets=%d",
-            len(variants), successes
+            "Selected completed record reference present=%s probe_eligible=%s",
+            bool(record_id), eligible
+        )
+        record_checked = 0
+        record_successes = 0
+        if eligible:
+            for route, version in variants:
+                record_checked += 1
+                try:
+                    response = self.request(
+                        "/api/app/trainingInfo/%s/%s" % (route, quote(record_id, safe="")),
+                        allow_error=True, read_version=version
+                    )
+                except APIError:
+                    self.logger.info(
+                        "Selected recordId detail route=%s version=%s APIError",
+                        route, version or "default"
+                    )
+                    continue
+                self.logger.info(
+                    "Selected recordId detail route=%s version=%s schema=%s",
+                    route, version or "default", structural_log(response)
+                )
+                if isinstance(response, dict):
+                    response = next((response[key] for key in (
+                        "list", "records", "data", "trainingInfoDetailList", "exerciseList"
+                    ) if isinstance(response.get(key), list)), [])
+                if isinstance(response, list):
+                    record_successes += int(any(
+                        isinstance(ex, dict) and isinstance(ex.get("finishedReps"), list)
+                        and bool(ex["finishedReps"]) for ex in response
+                    ))
+        self.logger.info(
+            "Selected Speediance workout API structure END checked=%d "
+            "responses_with_completed_sets=%d record_ref_checked=%d "
+            "record_ref_responses_with_completed_sets=%d",
+            len(variants), successes, record_checked, record_successes
         )
         return {"checked": len(variants),
                 "responses_with_completed_sets": successes,
+                "record_ref_checked": record_checked,
+                "record_ref_responses_with_completed_sets": record_successes,
                 "history_available": bool(workout.get("_history_response_shape"))}
 
     def detail(self, workout):

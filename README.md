@@ -515,6 +515,34 @@ Bitte das Protokoll trotzdem vor Weitergabe prüfen.
 Ob und wo das private Speediance-Backend wirklich abgeschlossene Sätze
 zurückliefert, muss anhand des echten ausgewählten Datensatzes geklärt werden.
 
+## 0.1.26-beta – Gezielter Test des recordId-Verweises
+
+Die echte Strukturdiagnose der abgeschlossenen Einheit zeigt
+`trainingPartSetsInfoList` mit drei **aggregierten** Trainingsteilen sowie
+`aiEntryPageReq.trainingParam.recordId` als separate Zeichenketten-Kennung.
+Die bisherigen GET-Detailabfragen mit `trainingId` lieferten nur
+`100041`, `403` oder leere Listen. Weder Übungsnamen noch
+Wiederholungen/Gewichte sind damit derzeit belegt.
+
+Mit **Speediance-Datensatz prüfen…** untersucht Version 0.1.26
+zunächst die bisherigen acht Abfragen und danach – **ausschließlich
+lesend** – dieselben bekannten Routen mit dem tatsächlich
+im ausgewählten Historieneintrag enthaltenen `recordId`, sofern
+die Kennung ein sicheres Pfadformat hat.
+Die Kennung wird nur während der Sitzung im Speicher gehalten und
+**niemals** in das Diagnoseprotokoll geschrieben.
+
+Im neuen Abschnitt `Selected recordId detail route=` stehen nur
+Routenname, verwendete API-Version und die wertfreie Antwortstruktur.
+Die Schlusszeile meldet zusätzlich `record_ref_checked` und
+`record_ref_responses_with_completed_sets`. Keine Trainingswerte
+oder Anmeldedaten teilen.
+
+**Diese Version übernimmt aus recordId-Antworten noch keine Sätze in den
+FIT-Export.** Erst eine Antwort mit nachweislich abgeschlossenen Sätzen
+rechtfertigt eine Änderung der Exportlogik. So vermeiden wir
+eine erneute falsche Erfolgsmeldung oder erfundene Trainingsdaten.
+
 ## Windows-Installer
 
 GitHub → **Actions** → **Windows installer** → **Run workflow**. Nach einem erfolgreichen Lauf die Datei **SpeedianceFITExporter-Windows-Setup** unter **Artifacts** herunterladen und die darin enthaltene `SpeedianceFITExporter-Setup.exe` starten. Der Installer wird von GitHub auf Windows gebaut und benötigt beim Anwender kein Python. Eine nicht signierte EXE kann eine Windows-SmartScreen-Warnung auslösen.

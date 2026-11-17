@@ -1,4 +1,4 @@
-# Speediance FIT Exporter (Beta 0.1.28)
+# Speediance FIT Exporter (Beta 0.1.29)
 
 Lokale Windows-10/11-Anwendung zum Abruf abgeschlossener Speediance-Trainingseinheiten aus dem eigenen Account und zum Export als Garmin-FIT-Aktivitäten. Die Speediance-API ist **inoffiziell**; der Login ist ohne echten Testaccount nicht verifiziert.
 
@@ -636,6 +636,43 @@ Links-/Rechts-Leistungsverläufe oder per-Satz-Maximalpulswerte statt.
 Auch die originale CSV enthält keine exakten Zeitpunkte für die
 Satzanfänge. Die tatsächlich sichtbare Garmin-Connect-Darstellung
 muss weiterhin an einem echten manuellen Import überprüft werden.
+
+## 0.1.29-beta – Kein falscher Erfolg bei fehlenden Speediance-Sätzen
+
+Der direkte Vergleich einer originalen Garmin-FIT und einer als
+zusammengeführt angezeigten FIT zeigte eine entscheidende Fehlfunktion:
+**Beide Dateien enthielten genau eine Garmin-SET-Nachricht und keine
+neuen Speediance-Sätze.** Nur die FIT-Dateiidentität war verändert.
+
+Die Ursache liegt in einem seit 0.1.23 tolerierten Garmin-only-Fallback.
+Ab jetzt gilt für **Mit Garmin abgleichen…**:
+
+- Liefert Speediance keine abgeschlossenen Sätze und wurde keine bestätigte
+  GM-Manager-History-CSV (oder GM-Manager-JSON) ausgewählt, **bricht der
+  Merge mit einer verständlichen Fehlermeldung ab, ohne eine FIT-Datei
+  zu schreiben**.
+- Wird die History-CSV ausgewählt, muss die Zahl der Quellzeilen genau
+  der Zahl der erzeugten **und der finalen** FIT-SET-Nachrichten entsprechen.
+  Im bestätigten Referenzfall sind das **27 Satzzeilen**. Für den JSON-
+  Ersatz gilt entsprechend die Zahl seiner 24 bestätigten Satzvorgaben.
+- Die finale FIT wird weiterhin auf FIT-CRC, Nachrichtenstruktur und
+  erhaltene Garmin-Nachrichten geprüft. Beim CSV-Import werden zusätzlich
+  die Wiederholungen und Gewichte jedes einzelnen Satzes aus der finalen
+  FIT dekodiert und mit dem bestätigten Import verglichen. Die
+  Gewichtswerte werden nicht aus Satzvolumina verdoppelt (0.1.18).
+- Die Diagnose meldet künftig die ausgewählte Satzquelle
+  (Cloud, bestätigte JSON-Datei oder History-CSV) und die Anzahl
+  übernommener Sätze. Es gibt keine irreführende Erfolgsmeldung
+  mehr bei **0** importierten Sätzen.
+
+Für den Anwendungsfall vom 16.11.2026 in der Merge-Maske explizit
+**GM-Manager-History-CSV wählen…** und die 27 Zeilen bestätigen,
+danach die Original-Garmin-FIT auswählen und exportieren.
+Die Warnung über geschätzte Satzanfangszeiten bleibt bestehen.
+
+Diese Prüfungen verhindern erneut unbemerkte Garmin-only-Dateien.
+Ein abschließender Importtest der neuen Version mit der echten
+Fenix-Aufzeichnung muss noch nachgewiesen werden.
 
 ## Windows-Installer
 

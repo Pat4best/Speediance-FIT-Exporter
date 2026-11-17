@@ -27,14 +27,25 @@ API_KEY_PAGE = "https://connect.garmin.com/app/settings/personalApiToken"
 
 
 def details_or_history(client, workout):
-    """Keep already loaded history metrics if completed sets are unavailable."""
+    """Never disguise an unavailable completed-session record as a merge."""
     try:
-        return client.detail(workout)
+        detail = client.detail(workout)
     except APIError as exc:
         if "keine Übungsdetails" not in str(exc):
             raise
-        logger.warning("Speediance set details unavailable; keeping original Garmin sets")
-        return dict(workout, exercises=[])
+        logger.warning("Speediance completed set details unavailable; merge refused")
+        raise GarminOverlayError(
+            "Speediance liefert keine abgeschlossenen Übungssätze. "
+            "Wähle zuerst 'GM-Manager-History-CSV wählen…' "
+            "oder 'GM-Manager-JSON wählen…' und bestätige die Daten. "
+            "Es wurde keine FIT-Datei erzeugt."
+        ) from None
+    if not any(ex.get("sets") for ex in detail.get("exercises") or []):
+        raise GarminOverlayError(
+            "Keine abgeschlossenen Übungssätze vorhanden; "
+            "bitte eine GM-Manager-History-CSV auswählen."
+        )
+    return detail
 
 
 class GarminMergeDialog(tk.Toplevel):
@@ -507,11 +518,27 @@ class GarminMergeDialog(tk.Toplevel):
                 )
             else:
                 detail = details_or_history(self.app.client, self.workout)
+            expected_sets = (
+                gm_history["set_count"] if gm_history is not None
+                else confirmed_gm["set_count"] if confirmed_gm is not None
+                else None
+            )
             result, meta = overlay_garmin_fit(
                 fit, detail, path, priority,
                 overrides=saved_mappings(),
                 weight_overrides=saved_weight_multipliers(),
+                expected_set_count=expected_sets,
             )
+            if meta["new_speediance_sets"] <= 0 or (
+                expected_sets is not None
+                and meta["new_speediance_sets"] != expected_sets
+            ):
+                # Defense in depth: never report a successful Garmin-only
+                # file when a set source was selected.
+                raise GarminOverlayError(
+                    "Zusammenführung abgebrochen: Keine gültige "
+                    "Satzübernahme in die FIT-Datei"
+                )
             return result, meta
 
         def done(result):
@@ -521,7 +548,7 @@ class GarminMergeDialog(tk.Toplevel):
                 "garmin_hr=%d speediance_hr=%d out_of_window=%d "
                 "duration_seconds=%d garmin_original=%d preserved_types=%d "
                 "native_device_info=%d speediance_sets=%d replaced_native_sets=%d "
-                "hr_records_added=%d hr_records_patched=%d",
+                "hr_records_added=%d hr_records_patched=%d set_source=%s",
                 meta["samples"], meta["garmin_samples"],
                 meta["speediance_samples"], meta["out_of_window_samples"],
                 meta["duration_seconds"],
@@ -532,6 +559,7 @@ class GarminMergeDialog(tk.Toplevel):
                 meta["replaced_garmin_sets"],
                 meta["added_hr_records"],
                 meta["patched_hr_records"],
+                meta["speediance_source"],
             )
             source_note = (
                 self.app.tr("Satzquelle: GM-Manager-Workout-History-CSV. "

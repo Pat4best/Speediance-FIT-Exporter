@@ -215,7 +215,7 @@ def _rebuild(original, stream):
 
 def overlay_garmin_fit(original, speediance, destination, priorities=None,
                        overrides=None, weight_overrides=None,
-                       speediance_fit_bytes=None):
+                       speediance_fit_bytes=None, expected_set_count=None):
     """Use the Garmin FIT as binary base, supplement with Speediance sets.
 
     FIT manufacturer in the new *file_id* is DEVELOPMENT, with a fresh
@@ -241,6 +241,25 @@ def overlay_garmin_fit(original, speediance, destination, priorities=None,
     has_completed_sets = any(
         exercise.get("sets") for exercise in speediance.get("exercises") or []
     )
+    # A successful Garmin+Speediance merge must contain actual supplied SET
+    # messages. The former silent fallback wrote an essentially unchanged
+    # Garmin recording while reporting success.
+    source_set_count = sum(
+        len(ex.get("sets") or [])
+        for ex in speediance.get("exercises") or []
+    )
+    if expected_set_count is not None:
+        if (type(expected_set_count) is not int or expected_set_count <= 0
+                or expected_set_count != source_set_count):
+            raise GarminOverlayError(
+                "Die ausgewählte Satzquelle enthält nicht die erwartete Anzahl an Sätzen"
+            )
+    if not source_set_count and speediance_fit_bytes is None:
+        raise GarminOverlayError(
+            "Keine abgeschlossenen Speediance-Sätze verfügbar. "
+            "Bitte eine passende GM-Manager-History-CSV auswählen; "
+            "es wurde keine FIT-Datei erzeugt."
+        )
     if speediance_fit_bytes is not None:
         generated = parse_fit_wire(speediance_fit_bytes)
     elif has_completed_sets:
@@ -252,10 +271,19 @@ def overlay_garmin_fit(original, speediance, destination, priorities=None,
             generated = parse_fit_wire(temp_path.read_bytes())
     else:
         generated = []
-    replace_native_sets = any(
+    generated_set_count = sum(
         entry["kind"] == "data" and entry["global"] == 225
         for entry in generated
     )
+    if (generated_set_count == 0
+            or (source_set_count and generated_set_count != source_set_count)
+            or (expected_set_count is not None
+                and generated_set_count != expected_set_count)):
+        raise GarminOverlayError(
+            "Satzübernahme fehlgeschlagen: Die erzeugte FIT enthält "
+            "nicht die erwarteten Übungssätze"
+        )
+    replace_native_sets = True
     new_strength = ([_from_message(entry)
                      for entry in generated if entry["kind"] == "data"
                      and entry["global"] in (225, 264)]
@@ -425,8 +453,32 @@ def overlay_garmin_fit(original, speediance, destination, priorities=None,
         x["global"] for x in final if x["kind"] == "data")
     expected_strength = sum(
         1 for x in generated if x["kind"] == "data" and x["global"] == 225)
-    if final_counts[225] != (expected_strength if replace_native_sets else native_sets):
+    if final_counts[225] != generated_set_count:
         raise GarminOverlayError("SET-Anzahl nach Garmin-Overlay inkonsistent")
+    if expected_set_count is not None and final_counts[225] != expected_set_count:
+        raise GarminOverlayError(
+            "Export abgebrochen: Die zusammengeführte FIT enthält "
+            "nicht die erwartete Anzahl an Übungssätzen"
+        )
+    if speediance.get("_set_source") == "gm_manager_history_csv":
+        # Check decoded final FIT, not just the temporary generated FIT.
+        # A plan- or Garmin-only file must never be accepted as a CSV merge.
+        planned = [item for exercise in speediance.get("exercises") or []
+                   for item in exercise.get("sets") or []]
+        written = [item for item in final if item["kind"] == "data"
+                   and item["global"] == 225]
+        if len(written) != len(planned):
+            raise GarminOverlayError("CSV-Sätze fehlen in der finalen FIT-Datei")
+        for given, emitted in zip(planned, written):
+            reps = max(0, min(65534, int(float(given.get("reps") or 0))))
+            kg = max(0.0, float(given.get("weight") or 0))
+            weight_scaled = min(65534, round(kg * 16))
+            if (_get_numeric(emitted, 3) != reps
+                    or _get_numeric(emitted, 4) != weight_scaled):
+                raise GarminOverlayError(
+                    "Export abgebrochen: CSV-Wiederholungen oder -Gewichte "
+                    "stimmen in der FIT-Datei nicht überein"
+                )
     emitted_ids = [x for x in final if x["kind"] == "data" and x["global"] == 0]
     if len(emitted_ids) != 1 or any(
         _get_numeric(emitted_ids[0], number) != value

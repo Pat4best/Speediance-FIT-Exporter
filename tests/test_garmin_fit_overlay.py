@@ -233,34 +233,35 @@ class GarminOverlayTests(unittest.TestCase):
         self.assertEqual(meta["speediance_repetitions"], 20)
         self.assertEqual(session[10][1], 20)
 
-    def test_history_only_merge_preserves_garmin_sets_and_repetitions(self):
+    def test_history_only_merge_refuses_a_garmin_only_pseudo_success(self):
         original = original_garmin_fit()
         history = speediance_executed()
         history.pop("exercises")
         history.pop("heart_rate_points")
         history.pop("heart_rate_summary")
-        opts = dict(DEFAULT_PRIORITIES, calories="speediance",
-                    start="speediance", duration="speediance")
         with TemporaryDirectory() as folder:
-            file, meta = overlay_garmin_fit(
-                original, history, Path(folder) / "history-only.fit", opts)
-            result = file.read_bytes()
-        self.assertEqual(all_message_data(original, 225),
-                         all_message_data(result, 225))
-        self.assertEqual(all_message_data(original, 23),
-                         all_message_data(result, 23))
-        self.assertEqual(all_message_data(original, 233),
-                         all_message_data(result, 233))
-        self.assertEqual(meta["new_speediance_sets"], 0)
-        self.assertEqual(meta["preserved_native_sets"], 1)
-        self.assertEqual(meta["replaced_garmin_sets"], 0)
-        session = values(result, 18)[0]
-        self.assertEqual(session[11][1], 454)
-        self.assertEqual(session[7][1], 300000)
-        self.assertEqual(session[10][1], 57)
-        self.assertEqual(values(result, 19)[0][10][1], 57)
-        self.assertEqual(crc(result[:-2]),
-                         struct.unpack_from("<H", result, len(result) - 2)[0])
+            target = Path(folder) / "history-only.fit"
+            with self.assertRaisesRegex(GarminOverlayError, "keine FIT-Datei"):
+                overlay_garmin_fit(original, history, target)
+            self.assertFalse(target.exists())
+        self.assertEqual(original, original_garmin_fit())
+
+    def test_expected_set_count_must_match_source_and_final(self):
+        original = original_garmin_fit()
+        with TemporaryDirectory() as folder:
+            target = Path(folder) / "bad-count.fit"
+            with self.assertRaisesRegex(GarminOverlayError, "erwartete Anzahl"):
+                overlay_garmin_fit(
+                    original, speediance_executed(), target,
+                    expected_set_count=27
+                )
+            self.assertFalse(target.exists())
+            good, meta = overlay_garmin_fit(
+                original, speediance_executed(), Path(folder) / "ok.fit",
+                expected_set_count=2
+            )
+            self.assertEqual(meta["new_speediance_sets"], 2)
+            self.assertEqual(len(values(good.read_bytes(), 225)), 2)
 
     def test_original_garmin_file_never_modified(self):
         original = original_garmin_fit()

@@ -98,6 +98,27 @@ def write_fit(workout, destination, overrides=None, weight_overrides=None):
                  (3, 0x8C, serial), (4, 0x86, start_ts)])
     # Event TIMER=0, event_type START=0.
     enc.mesg(21, [(253, 0x86, start_ts), (0, 0, 0), (1, 0, 0)])
+    # DeviceInfo (global 23): write only a sensor name explicitly returned
+    # by Speediance. watchType or pulse values do not identify an HRM 600.
+    # Leave unknown product IDs and serial numbers absent.
+    sensor = workout.get("hr_sensor")
+    if isinstance(sensor, dict) and isinstance(sensor.get("name"), str):
+        name = sensor["name"].strip()
+        if name and sensor.get("verified_from") == "speediance_metadata":
+            device_fields = [
+                (253, 0x86, start_ts),
+                (0, 2, 1),            # index of the external sensor
+                (19, 7, name),        # device_info.descriptor
+                (27, 7, name),        # device_info.product_name
+            ]
+            if sensor.get("manufacturer") == "Garmin":
+                device_fields.append((2, 0x84, 1))  # GARMIN, FIT manufacturer
+            # source_type only when explicitly documented by Speediance.
+            if sensor.get("protocol") == "ble":
+                device_fields.extend([(1, 2, 1), (25, 0, 3)])
+            elif sensor.get("protocol") == "antplus":
+                device_fields.extend([(1, 2, 120), (25, 0, 1)])
+            enc.mesg(23, device_fields)
     # FIT Activity files expect Record messages, including timestamp and data.
     # Strength sessions are stationary; distance is always 0 m, no fake HR.
     enc.mesg(20, [(253, 0x86, start_ts), (5, 0x86, 0)])
@@ -158,10 +179,30 @@ def write_fit(workout, destination, overrides=None, weight_overrides=None):
     for _, _, global_num, fields in sorted(events, key=lambda event: (event[0], event[1])):
         enc.mesg(global_num, fields)
 
-    hr_stats = ([
-        (16, 2, int(round(sum(accepted_hr) / len(accepted_hr)))),
-        (17, 2, max(accepted_hr)),
-    ] if accepted_hr else [])
+    # Prefer the measured Speediance summary (when returned by its graph API)
+    # over averaging a downsampled plot. If there is only a per-set maximum,
+    # report *only* max HR: no invented average or time series.
+    summary = workout.get("heart_rate_summary") or {}
+    def _hr(value):
+        try:
+            val = float(value)
+            return int(round(val)) if 20 <= val <= 254 else None
+        except (ValueError, TypeError):
+            return None
+    avg_hr = _hr(summary.get("avg"))
+    max_hr = _hr(summary.get("max"))
+    if accepted_hr:
+        if avg_hr is None:
+            avg_hr = int(round(sum(accepted_hr) / len(accepted_hr)))
+        max_hr = max([max_hr or 0] + accepted_hr)
+    lap_hr_fields = []
+    session_hr_fields = []
+    if avg_hr is not None:
+        lap_hr_fields.append((15, 2, avg_hr))
+        session_hr_fields.append((16, 2, avg_hr))
+    if max_hr is not None:
+        lap_hr_fields.append((16, 2, max_hr))
+        session_hr_fields.append((17, 2, max_hr))
 
     # Optional custom titles for movements absent from the Garmin enum.
     # Garmin Connect may ignore these titles in imported ACTIVITY files.
@@ -179,7 +220,7 @@ def write_fit(workout, destination, overrides=None, weight_overrides=None):
         (2, 0x86, start_ts), (7, 0x86, duration_ms),
         (8, 0x86, duration_ms), (9, 0x86, 0),
         (25, 0, 10), (39, 0, 20),
-    ] + ([(15, 2, hr_stats[0][2]), (16, 2, hr_stats[1][2])] if hr_stats else []))
+    ] + lap_hr_fields)
     # Sport TRAINING=10; sub_sport STRENGTH_TRAINING=20 (not swimming=5).
     enc.mesg(18, [
         (254, 0x84, 0), (253, 0x86, end_ts), (0, 0, 8), (1, 0, 1),
@@ -187,7 +228,7 @@ def write_fit(workout, destination, overrides=None, weight_overrides=None):
         (7, 0x86, duration_ms), (8, 0x86, duration_ms),
         (9, 0x86, 0), (11, 0x84, calories),
         (25, 0x84, 0), (26, 0x84, 1),
-    ] + hr_stats)
+    ] + session_hr_fields)
     enc.mesg(34, [
         (253, 0x86, end_ts), (0, 0x86, duration_ms), (1, 0x84, 1),
         (2, 0, 0), (3, 0, 26), (4, 0, 1),

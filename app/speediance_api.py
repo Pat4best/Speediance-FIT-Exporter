@@ -13,6 +13,7 @@ from heart_rate import graph_details, graph_shape, valid_bpm
 from hr_sensor import find_hr_sensor
 from weight_handling import measured_set_weight
 from activity_time import activity_bounds
+from completed_workout_cache import load_detail_cache, save_detail_cache
 
 HOSTS = {"EU": "euapi.speediance.com", "Global": "api2.speediance.com"}
 ROUTES = {
@@ -43,7 +44,8 @@ class APIError(Exception):
 
 
 class Client:
-    def __init__(self, logger, region="EU", device=1, login_client_type=DEFAULT_LOGIN_CLIENT_TYPE):
+    def __init__(self, logger, region="EU", device=1,
+                 login_client_type=DEFAULT_LOGIN_CLIENT_TYPE, cache_dir=None):
         self.logger = logger
         self.host = HOSTS[region]
         self.device = device
@@ -53,6 +55,7 @@ class Client:
         if login_client_type not in LOGIN_CLIENT_TYPES:
             raise ValueError("Unbekannter Speediance-Anmeldetyp")
         self.login_client_type = login_client_type
+        self.cache_dir = cache_dir
         self.calendar_fallback_added = 0
 
     def request(self, path, payload=None, allow_error=False, login_as=None, read_version=None):
@@ -360,6 +363,21 @@ class Client:
         return result
 
     def detail(self, workout):
+        # A completed workout is immutable. Prefer its previously verified
+        # observations over another network request; never reconstruct
+        # planned weights from a calendar template.
+        cached = load_detail_cache(
+            self.cache_dir, self.host, self.user_id, workout
+        )
+        if cached is not None:
+            self.logger.info(
+                "Completed workout details from local cache: exercises=%d sets=%d "
+                "heart_samples=%d",
+                len(cached["exercises"]),
+                sum(len(e["sets"]) for e in cached["exercises"]),
+                len(cached["heart_rate_points"]),
+            )
+            return dict(workout, **cached)
         raw = None
         # The calendar's type sometimes points at an empty detail endpoint.
         # Safely try alternative read-only endpoints before declaring no details.
@@ -524,10 +542,23 @@ class Client:
                 self.logger.warning("Heart-rate graph request unavailable")
         else:
             self.logger.info("Heart-rate graph unavailable: recording UUID missing")
-        return dict(
+        result = dict(
             workout, exercises=exercises,
             heart_rate_points=heart_points,
             heart_rate_summary=summary,
             heart_rate_timing_estimated=timing_estimated,
             hr_sensor=sensor,
         )
+        try:
+            saved = save_detail_cache(
+                self.cache_dir, self.host, self.user_id, workout, result
+            )
+            if saved:
+                self.logger.info(
+                    "Completed workout details cached locally: exercises=%d sets=%d "
+                    "heart_samples=%d",
+                    len(exercises), count, len(heart_points),
+                )
+        except (OSError, ValueError, TypeError):
+            self.logger.warning("Local completed-workout cache write failed")
+        return result

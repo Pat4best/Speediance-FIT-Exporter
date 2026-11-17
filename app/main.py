@@ -20,7 +20,7 @@ from mapping_editor import MappingEditor
 from exercise_discovery import discover_names
 
 APP = "Speediance FIT Exporter"
-VERSION = "0.1.5-beta"
+VERSION = "0.1.6-beta"
 DATA = Path(os.environ.get("LOCALAPPDATA", Path.home())) / "SpeedianceFITExporter"
 DATA.mkdir(parents=True, exist_ok=True)
 LOG = DATA / "diagnose.log"
@@ -366,7 +366,14 @@ class App(tk.Tk):
                 self.table.insert("", "end", iid=str(i), values=(
                     item["day"], item["title"], item["duration_min"], item["calories"]
                 ))
-            self.status.set("%d abgeschlossene Workouts geladen." % len(items))
+            recovered = getattr(self.client, "calendar_fallback_added", 0)
+            if recovered:
+                self.status.set(
+                    "%d abgeschlossene Workouts geladen (+%d über frühere Kalender-API)." %
+                    (len(items), recovered)
+                )
+            else:
+                self.status.set("%d abgeschlossene Workouts geladen." % len(items))
 
         self.run_job(lambda: self.client.list_workouts(start, end), done)
 

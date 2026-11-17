@@ -166,6 +166,19 @@ EN = {
     "Speediance-Übungen": "Speediance exercises",
     "Speediance-Namen filtern:": "Filter Speediance names:",
     "Garmin-Katalog durchsuchen": "Search Garmin exercise catalog",
+    "Links und rechts eine Übung auswählen.":
+        "Select an exercise on the left and right.",
+    "Links die Speediance-Übung und rechts die Garmin-Übung wählen, dann auf „Zuordnen“ klicken. Die Zuordnung erscheint sofort links.":
+        "Select a Speediance exercise on the left and a Garmin exercise on the right, then click Map. The mapping appears on the left immediately.",
+    "← Zuordnen": "← Map",
+    "Rechts eine Garmin-Übung auswählen.":
+        "Select a Garmin exercise on the right.",
+    "Mit „← Zuordnen“ übernehmen.":
+        "Click ← Map to assign this exercise.",
+    "Zuordnung gespeichert: %s → %s":
+        "Mapping saved: %s → %s",
+    "Zuordnung entfernt.": "Mapping removed.",
+
     "Katalogsprache:": "Catalog language:",
     "Katalogsprache konnte nicht gespeichert werden.": "Could not save catalog language preference.",
     "Suchbegriff (z. B. Bankdrücken / bench, Kreuzheben / deadlift):":

@@ -11,8 +11,6 @@ from garmin_fit_overlay import overlay_garmin_fit, GarminOverlayError
 from garmin_local_fit import (
     read_local_garmin_fit, match_local_garmin_fit, LocalGarminFitError,
 )
-from garmin_saved_speediance import load_saved_speediance_fit, SavedSpeedianceFitError
-from speediance_api import APIError
 from garmin_merge import PRIORITY_LABELS, check_priorities
 from garmin_personal import GarminPersonalClient, GarminPersonalError, match_activities
 from preferences import (saved_mappings, saved_weight_multipliers,
@@ -37,9 +35,9 @@ class GarminMergeDialog(tk.Toplevel):
         self.title(app.tr("Garmin-FIT-Quellen – Abgleich und Merge"))
         self.transient(app)
         w = min(850, max(640, app.winfo_screenwidth() - 80))
-        h = min(730, max(650, app.winfo_screenheight() - 70))
+        h = min(650, max(580, app.winfo_screenheight() - 80))
         self.geometry("%dx%d" % (w, h))
-        self.minsize(640, 600)
+        self.minsize(640, 540)
         self.protocol("WM_DELETE_WINDOW", self._close)
         self._build()
         self.grab_set()
@@ -72,7 +70,7 @@ class GarminMergeDialog(tk.Toplevel):
         credentials = ttk.LabelFrame(outer, text=tr("1 – Garmin-FIT-Quelle auswählen"),
                                      padding=8)
         credentials.pack(fill="x")
-        self.source_choice = tk.StringVar(value="api")
+        self.source_choice = tk.StringVar(value="file")
         choices = ttk.Frame(credentials)
         choices.pack(fill="x", pady=(0, 6))
         ttk.Radiobutton(
@@ -100,7 +98,6 @@ class GarminMergeDialog(tk.Toplevel):
             variable=self.remember_key,
         ).pack(anchor="w", pady=(5, 0))
         self.local_file_path = tk.StringVar(value="")
-        self.speed_fallback_path = tk.StringVar(value="")
         file_line = ttk.Frame(credentials)
         file_line.pack(fill="x", pady=(7, 0))
         ttk.Entry(file_line, textvariable=self.local_file_path,
@@ -108,17 +105,6 @@ class GarminMergeDialog(tk.Toplevel):
             side="left", fill="x", expand=True, padx=(0, 8))
         ttk.Button(file_line, text=tr("Garmin-FIT wählen…"),
                    command=self._pick_local_fit).pack(side="right")
-        saved_line = ttk.Frame(credentials)
-        saved_line.pack(fill="x", pady=(7, 0))
-        ttk.Label(saved_line, text=tr("Bei Speediance-API-Ausfall:")).pack(
-            side="left", padx=(0, 8))
-        ttk.Entry(saved_line, textvariable=self.speed_fallback_path,
-                  width=37, state="readonly").pack(
-            side="left", fill="x", expand=True, padx=(0, 8))
-        ttk.Button(
-            saved_line, text=tr("Vorhandene Speediance-FIT wählen…"),
-            command=self._pick_speediance_fallback,
-        ).pack(side="right")
 
         priority_frame = ttk.LabelFrame(outer, text=tr("2 – Datenpriorität festlegen"),
                                         padding=8)
@@ -195,34 +181,6 @@ class GarminMergeDialog(tk.Toplevel):
     def _source_changed(self):
         if not self.app.busy:
             self._reset_search()
-
-    def _pick_speediance_fallback(self):
-        if self.app.busy:
-            return
-        selected = filedialog.askopenfilename(
-            parent=self,
-            title=self.app.tr("Bereits erstellte Speediance-FIT als Ersatz wählen"),
-            filetypes=[("FIT-Aktivitäten", "*.fit")],
-        )
-        if not selected:
-            return
-        try:
-            # Fail before the merge if this is an unrelated workout,
-            # a Garmin FIT, or a damaged/unsupported prior export.
-            load_saved_speediance_fit(self.workout, selected)
-        except SavedSpeedianceFitError as exc:
-            messagebox.showerror(
-                self.app.tr("Speediance-FIT"), str(exc), parent=self,
-            )
-            return
-        self.speed_fallback_path.set(selected)
-        logger.info("Validated prior Speediance FIT backup: yes")
-        messagebox.showinfo(
-            self.app.tr("Speediance-FIT"),
-            self.app.tr("Lokale Speediance-FIT geprüft. Sie wird verwendet, "
-                        "falls die Cloud keine abgeschlossenen Sätze liefert."),
-            parent=self,
-        )
 
     def _pick_local_fit(self):
         if self.app.busy:
@@ -381,49 +339,30 @@ class GarminMergeDialog(tk.Toplevel):
         if not target:
             return
         path = Path(target)
-        for original_path in (self.local_file_path.get(),
-                              self.speed_fallback_path.get()):
-            if original_path and path.resolve() == Path(original_path).resolve():
-                messagebox.showerror(
-                    self.app.tr("Originaldatei schützen"),
-                    self.app.tr("Die neue Datei darf die Original-FIT nicht überschreiben."),
-                    parent=self,
-                )
-                return
+        original_path = self.local_file_path.get()
+        if original_path and path.resolve() == Path(original_path).resolve():
+            messagebox.showerror(
+                self.app.tr("Originaldatei schützen"),
+                self.app.tr("Die neue Datei darf die Original-FIT nicht überschreiben."),
+                parent=self,
+            )
+            return
         candidate = self.candidates[selected]
         client = self.garmin_client
         local_fit = self.local_fit_bytes
         source = self.source_verified
-        fallback = self.speed_fallback_path.get()
-
         def job():
-            # Validate the chosen original Garmin first. The Speediance API
-            # is separate: a completed-set failure may use the user's prior
-            # offline Speediance FIT, never a template or fabricated data.
+            # The Garmin original is either the local verified FIT or the
+            # authenticated Personal API download. Completed Strength sets
+            # always come directly from Speediance or its automatic local
+            # per-account completed-workout cache.
             fit = (local_fit if source == "file"
                    else client.download_activity_fit(candidate["id"]))
-            saved_speed_fit = None
-            try:
-                detail = self.detail or self.app.client.detail(self.workout)
-            except APIError:
-                if not fallback:
-                    raise APIError(
-                        "Speediance liefert derzeit keine abgeschlossenen Sätze. "
-                        "Wähle optional eine früher erfolgreich exportierte "
-                        "Speediance-FIT im Garmin-Abgleichsfenster."
-                    ) from None
-                detail, saved_speed_fit = load_saved_speediance_fit(
-                    self.workout, fallback
-                )
-                logger.warning(
-                    "Speediance completed sets unavailable: "
-                    "using verified existing direct Speediance FIT"
-                )
+            detail = self.app.client.detail(self.workout)
             result, meta = overlay_garmin_fit(
                 fit, detail, path, priority,
                 overrides=saved_mappings(),
                 weight_overrides=saved_weight_multipliers(),
-                speediance_fit_bytes=saved_speed_fit,
             )
             return result, meta
 
@@ -434,7 +373,7 @@ class GarminMergeDialog(tk.Toplevel):
                 "garmin_hr=%d speediance_hr=%d out_of_window=%d "
                 "duration_seconds=%d garmin_original=%d preserved_types=%d "
                 "native_device_info=%d speediance_sets=%d replaced_native_sets=%d "
-                "hr_records_added=%d hr_records_patched=%d speediance_saved_fit=%s",
+                "hr_records_added=%d hr_records_patched=%d",
                 meta["samples"], meta["garmin_samples"],
                 meta["speediance_samples"], meta["out_of_window_samples"],
                 meta["duration_seconds"],
@@ -445,7 +384,6 @@ class GarminMergeDialog(tk.Toplevel):
                 meta["replaced_garmin_sets"],
                 meta["added_hr_records"],
                 meta["patched_hr_records"],
-                "yes" if meta["speediance_source"] == "saved_fit" else "no",
             )
             messagebox.showinfo(
                 self.app.tr("Zusammenführung abgeschlossen"),

@@ -20,7 +20,7 @@ from mapping_editor import MappingEditor
 from exercise_discovery import discover_names
 
 APP = "Speediance FIT Exporter"
-VERSION = "0.1.6-beta"
+VERSION = "0.1.7-beta"
 DATA = Path(os.environ.get("LOCALAPPDATA", Path.home())) / "SpeedianceFITExporter"
 DATA.mkdir(parents=True, exist_ok=True)
 LOG = DATA / "diagnose.log"
@@ -48,8 +48,10 @@ class App(tk.Tk):
     def __init__(self):
         super().__init__()
         self.title(APP + " – " + VERSION)
-        self.geometry("900x650")
-        self.minsize(780, 540)
+        screen_w, screen_h = self.winfo_screenwidth(), self.winfo_screenheight()
+        self.geometry("%dx%d" % (min(1080, max(720, screen_w - 60)),
+                                 min(770, max(460, screen_h - 100))))
+        self.minsize(720, 460)
         self.client = None
         self.sessions = []
         self.events = queue.Queue()
@@ -62,13 +64,19 @@ class App(tk.Tk):
         self.after(100, self.poll)
 
     def build_ui(self):
-        root = ttk.Frame(self, padding=16)
+        root = ttk.Frame(self, padding=10)
         root.pack(fill="both", expand=True)
-        ttk.Label(root, text=APP, font=("Segoe UI", 19, "bold")).pack(anchor="w")
-        ttk.Label(root, text="Workouts aus deinem Speediance-Account als Garmin-FIT exportieren").pack(
-            anchor="w", pady=(2, 15))
+        # Reserve the footer before packing the resizable workout list.
+        # This keeps actions visible on high-DPI and laptop displays.
+        footer = ttk.Frame(root)
+        footer.pack(side="bottom", fill="x")
+        body = ttk.Frame(root)
+        body.pack(side="top", fill="both", expand=True)
+        ttk.Label(body, text=APP, font=("Segoe UI", 17, "bold")).pack(anchor="w")
+        ttk.Label(body, text="Workouts aus deinem Speediance-Account als Garmin-FIT exportieren").pack(
+            anchor="w", pady=(2, 8))
 
-        login = ttk.LabelFrame(root, text="1 – Speediance-Anmeldung", padding=10)
+        login = ttk.LabelFrame(body, text="1 – Speediance-Anmeldung", padding=8)
         login.pack(fill="x")
         line = ttk.Frame(login)
         line.pack(fill="x")
@@ -83,6 +91,11 @@ class App(tk.Tk):
                      state="readonly", width=8).pack(side="left", padx=7)
         self.login_button = ttk.Button(line, text="Anmelden", command=self.login)
         self.login_button.pack(side="right")
+        self.login_status = tk.StringVar(value="● Nicht angemeldet")
+        self.login_status_label = ttk.Label(
+            login, textvariable=self.login_status, foreground="#9a3412"
+        )
+        self.login_status_label.pack(anchor="w", pady=(4, 0))
         login_options = ttk.Frame(login)
         login_options.pack(fill="x", pady=(8, 0))
         ttk.Checkbutton(login_options, text="Anmeldedaten auf diesem PC speichern",
@@ -103,8 +116,8 @@ class App(tk.Tk):
                   "Passwortspeicherung optional im Windows-Anmeldeinformationsmanager.",
                   foreground="#8a4800", wraplength=810).pack(anchor="w", pady=(6, 0))
 
-        controls = ttk.LabelFrame(root, text="2 – Trainingshistorie", padding=10)
-        controls.pack(fill="x", pady=12)
+        controls = ttk.LabelFrame(body, text="2 – Trainingshistorie", padding=8)
+        controls.pack(fill="x", pady=6)
         row = ttk.Frame(controls)
         row.pack(fill="x")
         today = date.today()
@@ -117,7 +130,7 @@ class App(tk.Tk):
         self.fetch_button = ttk.Button(row, text="Trainings laden", command=self.fetch)
         self.fetch_button.pack(side="left", padx=10)
 
-        content = ttk.Frame(root)
+        content = ttk.Frame(body)
         content.pack(fill="both", expand=True)
         self.table = ttk.Treeview(content, columns=("day", "title", "minutes", "kcal"),
                                   show="headings", selectmode="extended")
@@ -132,16 +145,16 @@ class App(tk.Tk):
         scroller.pack(side="right", fill="y")
         self.table.configure(yscrollcommand=scroller.set)
 
-        folder_row = ttk.Frame(root)
-        folder_row.pack(fill="x", pady=(12, 0))
+        folder_row = ttk.Frame(footer)
+        folder_row.pack(fill="x", pady=(6, 0))
         ttk.Label(folder_row, text="Exportordner: ").pack(side="left")
         ttk.Label(folder_row, textvariable=self.export_dir, width=60).pack(
             side="left", padx=(5, 8), fill="x", expand=True)
         ttk.Button(folder_row, text="Ordner auswählen…",
                    command=self.choose_export_dir).pack(side="right")
 
-        actions = ttk.Frame(root)
-        actions.pack(fill="x", pady=(12, 0))
+        actions = ttk.Frame(footer)
+        actions.pack(fill="x", pady=(6, 0))
         self.export_button = ttk.Button(actions, text="Ausgewählte als .fit exportieren",
                                          command=self.export)
         self.export_button.pack(side="left")
@@ -153,9 +166,9 @@ class App(tk.Tk):
         ttk.Button(actions, text="Diagnoseprotokoll speichern…",
                    command=self.save_log).pack(side="right", padx=8)
         self.status = tk.StringVar(value="Bereit. Bitte anmelden.")
-        ttk.Label(root, textvariable=self.status).pack(anchor="w", pady=(12, 0))
-        ttk.Label(root, text="FIT-Aktivitätsimport, kein Garmin-Trainingsplan. Fehlende Satzzeiten werden geschätzt.",
-                  foreground="#666").pack(anchor="w", pady=(5, 0))
+        ttk.Label(footer, textvariable=self.status).pack(anchor="w", pady=(6, 0))
+        ttk.Label(footer, text="FIT-Aktivitätsimport, kein Garmin-Trainingsplan. Fehlende Satzzeiten werden geschätzt.",
+                  foreground="#666").pack(anchor="w", pady=(2, 0))
 
     def _load_remembered_login(self):
         try:
@@ -169,6 +182,7 @@ class App(tk.Tk):
             self.password.set(password)
             self.region.set(region)
             self.save_login_var.set(True)
+            self.login_status.set("● Nicht angemeldet – Zugangsdaten vorausgefüllt")
             self.status.set("Gespeicherte Anmeldung geladen. Zum Verbinden auf Anmelden klicken.")
 
     def clear_saved_login(self):
@@ -184,6 +198,7 @@ class App(tk.Tk):
         self.email.set("")
         self.password.set("")
         self.save_login_var.set(False)
+        self.login_status.set("● Angemeldet" if self.client is not None else "● Nicht angemeldet")
         self.status.set("Gespeicherte Anmeldung gelöscht. Bestehende Sitzung bleibt angemeldet.")
 
     def choose_export_dir(self):
@@ -294,6 +309,9 @@ class App(tk.Tk):
                     callback(value)
                 else:
                     self.status.set("Fehler. Diagnoseprotokoll kann gespeichert werden.")
+                    if self.login_status.get().startswith("● Anmeldung läuft"):
+                        self.login_status.set("● Nicht angemeldet – Anmeldung fehlgeschlagen")
+                        self.login_status_label.configure(foreground="#9a3412")
                     messagebox.showerror("Fehler", callback)
         except queue.Empty:
             pass
@@ -322,6 +340,8 @@ class App(tk.Tk):
 
         def done(client):
             self.client = client
+            self.login_status.set("● Angemeldet (Speediance, %s)" % login_slot)
+            self.login_status_label.configure(foreground="#23754a")
             try:
                 save_login_client_type(login_slot)
             except OSError as exc:
@@ -343,6 +363,9 @@ class App(tk.Tk):
             self.password.set("")
             self.status.set("Angemeldet. Jetzt Trainings laden.")
 
+        self.client = None
+        self.login_status.set("● Anmeldung läuft …")
+        self.status.set("Anmeldung wird geprüft …")
         self.run_job(job, done)
 
     def fetch(self):
@@ -367,13 +390,11 @@ class App(tk.Tk):
                     item["day"], item["title"], item["duration_min"], item["calories"]
                 ))
             recovered = getattr(self.client, "calendar_fallback_added", 0)
-            if recovered:
-                self.status.set(
-                    "%d abgeschlossene Workouts geladen (+%d über frühere Kalender-API)." %
-                    (len(items), recovered)
-                )
-            else:
-                self.status.set("%d abgeschlossene Workouts geladen." % len(items))
+            other_device = getattr(self.client, "calendar_other_device_added", 0)
+            self.status.set(
+                "%d abgeschlossene Workouts geladen (frühere API: +%d; anderer Gerätetyp: +%d)." %
+                (len(items), recovered, other_device)
+            )
 
         self.run_job(lambda: self.client.list_workouts(start, end), done)
 

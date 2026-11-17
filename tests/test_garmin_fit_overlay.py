@@ -50,12 +50,14 @@ def original_garmin_fit():
         (253, 0x86, stamp(GARMIN_START + timedelta(seconds=360))),
         (2, 0x86, stamp(GARMIN_START)),
         (7, 0x86, 360000), (8, 0x86, 360000),
+        (10, 0x86, 57),
         (11, 0x84, 416), (15, 2, 111), (16, 2, 146),
     ])
     enc.mesg(18, [
         (253, 0x86, stamp(GARMIN_START + timedelta(seconds=360))),
         (2, 0x86, stamp(GARMIN_START)), (7, 0x86, 360000),
-        (8, 0x86, 360000), (11, 0x84, 416),
+        (8, 0x86, 360000), (10, 0x86, 57),
+        (11, 0x84, 416),
         (16, 2, 111), (17, 2, 146),
     ])
     enc.mesg(34, [
@@ -131,6 +133,9 @@ class GarminOverlayTests(unittest.TestCase):
         self.assertEqual(native_hrs[stamp(SPEED_START)], 100)
         self.assertEqual(native_hrs[stamp(SPEED_START + timedelta(seconds=10))], 120)
         self.assertEqual(native_hrs[stamp(SPEED_START + timedelta(seconds=25))], 130)
+        self.assertEqual(values(result, 18)[0][10][1], 20)
+        self.assertEqual(values(result, 19)[0][10][1], 20)
+        self.assertEqual(meta["speediance_repetitions"], 20)
         self.assertEqual(values(result, 18)[0][11][1], 416)
         self.assertEqual(values(result, 18)[0][16][1], 111)
         # New derived file ID, original Garmin device_info preserved.

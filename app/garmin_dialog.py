@@ -50,7 +50,7 @@ class GarminMergeDialog(tk.Toplevel):
         self.title(app.tr("Garmin-FIT-Quellen – Abgleich und Merge"))
         self.transient(app)
         w = min(850, max(640, app.winfo_screenwidth() - 80))
-        h = min(650, max(580, app.winfo_screenheight() - 80))
+        h = min(760, max(650, app.winfo_screenheight() - 80))
         self.geometry("%dx%d" % (w, h))
         self.minsize(640, 540)
         self.protocol("WM_DELETE_WINDOW", self._close)
@@ -425,9 +425,9 @@ class GarminMergeDialog(tk.Toplevel):
         confirmed_gm = self.gm_manager_import
         def job():
             # The Garmin original is either the local verified FIT or the
-            # authenticated Personal API download. Completed Strength sets
-            # always come directly from Speediance or its automatic local
-            # per-account completed-workout cache.
+            # authenticated Personal API download. Sets come from the normal
+            # Speediance completed-session API/cache, or explicitly from a
+            # user-confirmed GM Manager JSON as an opt-in alternative.
             fit = (local_fit if source == "file"
                    else client.download_activity_fit(candidate["id"]))
             if confirmed_gm is not None:
@@ -478,7 +478,7 @@ class GarminMergeDialog(tk.Toplevel):
             messagebox.showinfo(
                 self.app.tr("Zusammenführung abgeschlossen"),
                 source_note + self.app.tr("Garmin-originalbasierte FIT-Datei gespeichert:\n%s\n\n"
-                            "Speediance-Krafttrainingssätze: %d\n"
+                            "Importierte Übungssätze: %d\n"
                             "Erhaltene Garmin-Sätze: %d\n"
                             "Garmin-Geräteinformationen erhalten: %d\n"
                             "Zusätzliche HF-Records: %d\n"

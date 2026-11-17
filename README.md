@@ -1,4 +1,4 @@
-# Speediance FIT Exporter (Beta 0.1.23)
+# Speediance FIT Exporter (Beta 0.1.24)
 
 Lokale Windows-10/11-Anwendung zum Abruf abgeschlossener Speediance-Trainingseinheiten aus dem eigenen Account und zum Export als Garmin-FIT-Aktivitäten. Die Speediance-API ist **inoffiziell**; der Login ist ohne echten Testaccount nicht verifiziert.
 
@@ -452,6 +452,42 @@ und Trainingsliste laden. Im Diagnoseprotokoll die Zeile
 entschieden werden, ob ein unabhängiger Datensatzschlüssel vorhanden
 ist und welcher nachweislich gültige Endpunkt ihn nutzt.
 Der Garmin-Merge und die lokale Garmin-FIT-Auswahl bleiben unverändert.
+
+## 0.1.24 – Verlauf eindeutig pro ausgewählter Trainingseinheit prüfen
+
+Die allgemeine `Completed workout history cross-reference`-Zeile der
+Version 0.1.23 kann sich auf **eine andere Einheit** beziehen.
+Beim Test war `calendar_type=1` mit `history_type=2` verknüpft,
+während die ausgewählte Custom-Trainingseinheit zuerst den
+`cttTrainingInfoDetail`-Endpunkt nutzte. Deshalb war keine eindeutige
+Zuordnung dieser Diagnose zum 16.11. belegt.
+
+Nach dem normalen Klick auf **„Trainings laden“** protokolliert 0.1.24
+jetzt für **jede sichtbare Listenzeile** eine knappe
+`Workout history provenance row=N`-Diagnose. `row=1` bezeichnet die
+oberste Einheit der angezeigten Liste – im beschriebenen Beispiel
+„GMC · Mon 16 Nov“.
+
+Diese Zeile enthält nur **boolesche Aussagen und Anzahlen**:
+`matched_by_trainingId`, `history_on_same_day`,
+`same_day_same_title`, `same_day_close_duration`,
+`same_day_title_and_duration`. Die Diagnose verrät keine IDs,
+Datums-/Uhrzeitangaben, Namen, Trainingswerte oder Zugangsdaten.
+Daten werden ausschließlich aus dem bereits abgerufenen
+Kalender-/Historienergebnis abgeglichen; **keine zusätzlichen API-Requests**.
+
+Damit kann sauber unterschieden werden, ob der ausgewählte Kalender-
+Trainingsdatensatz in der abgeschlossenen Historie mit gleicher ID
+vorliegt, nur als möglicherweise anderer Datensatz am gleichen Tag
+erscheint oder gar nicht dort vertreten ist. Ein Treffer nach Titel
+und Dauer allein führt **nicht** zum automatischen Austausch der
+Trainings-ID. Solange der richtige Satz-Detail-Endpunkt nicht verifiziert
+ist, werden keine Planwerte als ausgeführt exportiert.
+
+**Nächster Test:** Nur anmelden, Trainingsliste laden und die Zeile
+`Workout history provenance row=1` senden. Danach können wir gezielt
+ermitteln, ob überhaupt eine getrennte Aufzeichnungskennung vorhanden
+ist. Die Garmin-FIT-Funktionen bleiben unverändert.
 
 ## Windows-Installer
 

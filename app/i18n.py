@@ -4,6 +4,28 @@ Speediance exercise names and raw diagnostic logs are not translated.
 Keep the source German keys stable; English is the user-facing alternative.
 """
 EN = {
+    "Garmin-FIT-Quellen – Abgleich und Merge": "Garmin FIT sources – matching and merge",
+    "1 – Garmin-FIT-Quelle auswählen": "1 – Choose Garmin FIT source",
+    "Garmin Personal API": "Garmin Personal API",
+    "Lokale Garmin-FIT-Datei": "Local Garmin FIT file",
+    "Garmin-FIT wählen…": "Choose Garmin FIT…",
+    "Bei Speediance-API-Ausfall:": "If Speediance API fails:",
+    "Vorhandene Speediance-FIT wählen…": "Choose earlier Speediance FIT…",
+    "Garmin-Aktivitäten suchen / FIT prüfen": "Find Garmin activities / check FIT",
+    "Quelle noch nicht überprüft.": "Source has not been checked yet.",
+    "FIT-Datei wird geprüft …": "Checking FIT file …",
+    "Lokale Garmin-FIT": "Local Garmin FIT",
+    "Originale Garmin-FIT-Datei wählen": "Choose original Garmin FIT file",
+    "Bereits erstellte Speediance-FIT als Ersatz wählen":
+        "Choose an earlier exported Speediance FIT as fallback",
+    "Speediance-FIT": "Speediance FIT",
+    "Lokale Speediance-FIT geprüft. Sie wird verwendet, falls die Cloud keine abgeschlossenen Sätze liefert.":
+        "Local Speediance FIT validated. It will be used if the cloud no longer returns completed sets.",
+    "Originaldatei schützen": "Protect original file",
+    "Die neue Datei darf die Original-FIT nicht überschreiben.":
+        "The merged file must not overwrite the original FIT file.",
+    "Speediance liefert derzeit keine abgeschlossenen Sätze. Wähle optional eine früher erfolgreich exportierte Speediance-FIT im Garmin-Abgleichsfenster.":
+        "Speediance is not returning completed sets. You can choose an earlier successfully exported Speediance FIT in the Garmin merge window.",
     "Garmin-FIT als Grundlage: Originalaufzeichnung, Geräte- und Sensordaten bleiben erhalten. Die tatsächlichen Speediance-Krafttrainingssätze werden ergänzt. Online bleibt alles unverändert.":
         "Garmin FIT is the base: original activity, device and sensor data are preserved. Speediance adds actual strength sets. Nothing online is modified.",
     "Neue FIT-Datei aus der ORIGINALEN Garmin-Aufzeichnung. Für vollständige Garmin-Zeitachsen Garmin als Trainingsbeginn und Trainingsdauer wählen. Ein manueller Import kann eine zweite Aktivität erzeugen; online wird nichts gelöscht oder überschrieben.":

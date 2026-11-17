@@ -1,4 +1,4 @@
-# Speediance FIT Exporter (Beta 0.1.22)
+# Speediance FIT Exporter (Beta 0.1.23)
 
 Lokale Windows-10/11-Anwendung zum Abruf abgeschlossener Speediance-Trainingseinheiten aus dem eigenen Account und zum Export als Garmin-FIT-Aktivitäten. Die Speediance-API ist **inoffiziell**; der Login ist ohne echten Testaccount nicht verifiziert.
 
@@ -422,6 +422,36 @@ Garmin Connect wird beim Merge ausschließlich **gelesen**.
 Eine spätere manuelle Einfuhr kann eine zusätzliche Aktivität erzeugen.
 
 ---
+
+## 0.1.23 – Diagnose gelöschter Vorlagen vs. absolvierte Einheit
+
+**Beobachtung:** Das Custom-Training vom 16.11.2026 war früher erfolgreich
+auslesbar (9 Übungen, 27 Sätze); nach Löschen der zugehörigen Vorlage
+liefert `cttTrainingInfoDetail` den API-Code `100041` – auch in der
+alten Version 0.1.18. Der Eintrag steht weiter im Speediance-Kalender
+und in der Trainingshistorie. Ein unabhängiger Detail-Endpunkt für
+gelöschte Vorlagen ist derzeit **nicht belegt**.
+
+Die Version 0.1.23 vergleicht vorhandene Daten aus
+`userTrainingDataRecord` mit der Kalenderansicht. Bei einem Treffer
+schreibt sie ins Diagnoseprotokoll
+`Completed workout history cross-reference:` mit
+`history_fields`, `id_vs_trainingId`, `calendar_type` und
+`history_type`. Es werden **keine tatsächlichen Kennungen, UUIDs,
+Trainingsnamen, Zeitpunkte oder Messwerte** geloggt.
+
+Die Server-Historie ist bei unterschiedlichen Trainingstypen künftig
+die maßgebliche Quelle für die **Reihenfolge der bereits bekannten**
+read-only Detail-Endpunkte. Andere IDs werden nicht auf Verdacht
+abgefragt. Ist die Detail-Aufzeichnung dennoch nicht erreichbar,
+wird **kein** Export mit geplanten oder erfundenen Satzgewichten erzeugt.
+
+**Für die Diagnose** die neueste Version öffnen, Speediance anmelden
+und Trainingsliste laden. Im Diagnoseprotokoll die Zeile
+`Completed workout history cross-reference` teilen. Danach kann
+entschieden werden, ob ein unabhängiger Datensatzschlüssel vorhanden
+ist und welcher nachweislich gültige Endpunkt ihn nutzt.
+Der Garmin-Merge und die lokale Garmin-FIT-Auswahl bleiben unverändert.
 
 ## Windows-Installer
 

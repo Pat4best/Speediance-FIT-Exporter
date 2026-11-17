@@ -4,6 +4,60 @@ Speediance exercise names and raw diagnostic logs are not translated.
 Keep the source German keys stable; English is the user-facing alternative.
 """
 EN = {
+    "Mit Garmin abgleichen…": "Match with Garmin…",
+    "Garmin Personal API – Abgleich und FIT-Merge": "Garmin Personal API – match and FIT merge",
+    "Garmin-Aktivität mit Speediance zusammenführen": "Merge a Garmin activity with Speediance",
+    "Nur Lesen über die offizielle Garmin Personal API. Die ursprüngliche Garmin-Connect-Aktivität bleibt unverändert.":
+        "Read-only access via the official Garmin Personal API. Your original Garmin Connect activity remains unchanged.",
+    "1 – Persönlicher Garmin-API-Schlüssel": "1 – Personal Garmin API key",
+    "Schlüssel erstellen": "Create API key",
+    "Garmin-Schlüssel geschützt auf diesem PC speichern":
+        "Save Garmin key securely on this PC",
+    "2 – Datenpriorität festlegen": "2 – Choose data priorities",
+    "Herzfrequenzverlauf": "Heart-rate graph",
+    "Durchschnittspuls": "Average heart rate",
+    "Maximalpuls": "Maximum heart rate",
+    "Kalorien": "Calories",
+    "Trainingsbeginn": "Activity start",
+    "Trainingsdauer": "Activity duration",
+    "Übungen, Sätze, Wiederholungen und tatsächliche Gewichte: immer Speediance. Fehlende Messwerte können aus der jeweils anderen Quelle ergänzt werden.":
+        "Exercises, sets, repetitions and actual weights always come from Speediance. Missing readings may be supplied by the other source.",
+    "3 – Passende Garmin-Aktivität wählen": "3 – Select matching Garmin activity",
+    "Garmin-Aktivitäten suchen": "Find Garmin activities",
+    "Noch keine Suche durchgeführt.": "No search yet.",
+    "Es wird eine NEUE lokale FIT-Datei erstellt. Ein manueller Import in Garmin Connect kann eine zweite Aktivität erzeugen. Keine Aktivitäten werden online gelöscht oder überschrieben.":
+        "A NEW local FIT file will be created. Importing it into Garmin Connect may create a duplicate activity. No online activities are deleted or overwritten.",
+    "Zusammengeführte FIT speichern…": "Save merged FIT…",
+    "Bitte laufenden Vorgang abschließen": "Please finish the current operation",
+    "Der Abgleich läuft noch. Bitte erst nach Abschluss schließen.":
+        "The matching operation is running. Close this window after it completes.",
+    "Garmin API-Schlüssel": "Garmin API key",
+    "Bitte einen persönlichen Garmin-API-Schlüssel eingeben.":
+        "Enter your personal Garmin API key.",
+    "Garmin-Schlüssel": "Garmin key",
+    "Der Garmin-Schlüssel konnte nicht geschützt gespeichert werden.":
+        "The Garmin key could not be securely stored.",
+    "Suche läuft …": "Searching …",
+    "Keine zeitlich passende Garmin-Aktivität gefunden.":
+        "No matching Garmin activity found.",
+    "Kein eindeutiger Treffer": "No matching activity",
+    "Keine Garmin-Aktivität passt zeitlich ausreichend. Es wurde keine FIT-Datei erstellt.":
+        "No Garmin activity matches the activity time closely enough. No FIT file was created.",
+    "%d mögliche Garmin-Aktivität(en). Bitte eine auswählen.":
+        "%d possible Garmin activities. Please select one.",
+    "Garmin-Aktivität auswählen": "Select Garmin activity",
+    "Bitte zuerst die passende Garmin-Aktivität auswählen.":
+        "Select the matching Garmin activity first.",
+    "Einstellungen": "Settings",
+    "Datenpriorität konnte nicht gespeichert werden.":
+        "Data priority settings could not be saved.",
+    "Neue zusammengeführte FIT-Datei speichern": "Save new merged FIT file",
+    "Zusammenführung abgeschlossen": "Merge completed",
+    "Neue FIT-Datei lokal gespeichert:\\n%s\\n\\nHerzfrequenzpunkte: %d\\nAußerhalb der gewählten Dauer: %d\\n\\nGarmin Connect wurde NICHT verändert.":
+        "New FIT file saved locally:\\n%s\\n\\nHeart-rate points: %d\\nOutside selected duration: %d\\n\\nGarmin Connect was NOT modified.",
+    "Eine Trainingseinheit auswählen": "Select one workout",
+    "Bitte genau eine Speediance-Trainingseinheit markieren.":
+        "Select exactly one Speediance workout.",
     "Sprache:": "Language:",
     "Workouts aus deinem Speediance-Account als Garmin-FIT exportieren":
         "Export workouts from your Speediance account as Garmin FIT files",

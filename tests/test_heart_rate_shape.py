@@ -48,6 +48,46 @@ class HeartRateUnknownShapeTests(unittest.TestCase):
                        "sensitive-device-id", "160", "146"):
             self.assertNotIn(secret, serial)
 
+    def test_diagnostics_identify_zero_and_invalid_types_without_exposing_values(self):
+        graph = {"heartRates": [
+            {"heartRate": 0, "time": 0, "secret": "TOKEN-ABC"},
+            {"heartRate": "0", "time": "1"},
+            {"heartRate": "121", "time": "unrecognized"},
+            {"heartRate": {"value": 130}, "time": None},
+            {"heartRate": 1000, "time": 9999999},
+            {"heartRate": -1, "time": -5},
+            {"time": 3},
+        ]}
+        shape = graph_shape(graph)
+        self.assertEqual(shape["heartRate_types"], {
+            "int": 3, "str": 2, "dict": 1,
+        })
+        self.assertEqual(shape["heartRate_status"], {
+            "valid": 1, "zero": 2, "below_range": 1,
+            "above_range": 1, "nonnumeric": 1, "absent": 1,
+        })
+        self.assertEqual(shape["time_status"], {
+            "valid_seconds": 3, "negative": 1, "over_24h": 1,
+            "nonnumeric": 2, "absent": 0,
+        })
+        self.assertNotIn("TOKEN-ABC", str(shape))
+        self.assertNotIn("121", str(shape))
+        self.assertNotIn("1000", str(shape))
+
+    def test_942_empty_or_non_numeric_samples_do_not_fabricate_pulse(self):
+        graph = {
+            "heartRates": [
+                {"heartRate": None, "time": i, "source": "private-opaque"}
+                for i in range(942)
+            ],
+            "avgHeartRate": 110, "maxHeartRate": 146,
+        }
+        self.assertEqual(graph_details(graph, 1000)["points"], [])
+        shape = graph_shape(graph)
+        self.assertEqual(shape["heartRate_types"], {"NoneType": 942})
+        self.assertEqual(shape["heartRate_status"]["nonnumeric"], 942)
+        self.assertEqual(shape["time_status"]["valid_seconds"], 942)
+
     def test_no_valid_samples_still_keeps_real_max_from_sets(self):
         client = Client(logging.getLogger("heart-shape"))
         def fake_request(path, **_kwargs):

@@ -100,3 +100,52 @@ def delete_login():
         err = ctypes.get_last_error()
         if err != ERROR_NOT_FOUND:
             raise ctypes.WinError(err)
+
+
+GARMIN_TARGET = "SpeedianceFITExporter/GarminPersonalAPI"
+
+
+def save_garmin_api_key(api_key):
+    """Opt-in Windows Credential Manager storage, never preferences/logs."""
+    if not isinstance(api_key, str) or not api_key.strip():
+        raise ValueError("Garmin API-Schlüssel fehlt")
+    data = api_key.strip().encode("utf-16-le")
+    if len(data) > 2560:
+        raise ValueError("Garmin API-Schlüssel überschreitet das Windows-Limit")
+    buffer = (ctypes.c_ubyte * len(data)).from_buffer_copy(data)
+    cred = CREDENTIALW()
+    cred.Type = CRED_TYPE_GENERIC
+    cred.TargetName = GARMIN_TARGET
+    cred.Comment = "Garmin Personal API key"
+    cred.CredentialBlobSize = len(data)
+    cred.CredentialBlob = ctypes.cast(buffer, ctypes.POINTER(ctypes.c_ubyte))
+    cred.Persist = CRED_PERSIST_LOCAL_MACHINE
+    cred.UserName = "Garmin Personal API"
+    lib = _advapi()
+    if not lib.CredWriteW(ctypes.byref(cred), 0):
+        raise ctypes.WinError(ctypes.get_last_error())
+
+
+def load_garmin_api_key():
+    lib = _advapi()
+    ptr = ctypes.POINTER(CREDENTIALW)()
+    if not lib.CredReadW(GARMIN_TARGET, CRED_TYPE_GENERIC, 0, ctypes.byref(ptr)):
+        err = ctypes.get_last_error()
+        if err == ERROR_NOT_FOUND:
+            return None
+        raise ctypes.WinError(err)
+    try:
+        credential = ptr.contents
+        size = int(credential.CredentialBlobSize)
+        raw = ctypes.string_at(credential.CredentialBlob, size) if size else b""
+        return raw.decode("utf-16-le") or None
+    finally:
+        lib.CredFree(ctypes.cast(ptr, ctypes.c_void_p))
+
+
+def delete_garmin_api_key():
+    lib = _advapi()
+    if not lib.CredDeleteW(GARMIN_TARGET, CRED_TYPE_GENERIC, 0):
+        err = ctypes.get_last_error()
+        if err != ERROR_NOT_FOUND:
+            raise ctypes.WinError(err)

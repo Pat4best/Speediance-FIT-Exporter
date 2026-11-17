@@ -410,7 +410,7 @@ def overlay_garmin_fit(original, speediance, destination, priorities=None,
         x["global"] for x in final if x["kind"] == "data")
     expected_strength = sum(
         1 for x in generated if x["kind"] == "data" and x["global"] == 225)
-    if final_counts[225] != expected_strength:
+    if final_counts[225] != (expected_strength if replace_native_sets else native_sets):
         raise GarminOverlayError("SET-Anzahl nach Garmin-Overlay inkonsistent")
     for num, count in original_counts.items():
         if num not in (225, 20, 264) and final_counts[num] != count:

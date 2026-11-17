@@ -399,20 +399,29 @@ class Client:
         self.logger.info("Loaded %d exercises and %d sets", len(exercises), count)
         if not count:
             raise APIError("Speediance hat für dieses Training keine Sätze geliefert")
+        # Set-level peaks are useful to diagnose whether the machine recorded
+        # a connected HR sensor even if no full graph is available. Do not
+        # fabricate second-by-second values from a per-set maximum.
+        peaks = sum(
+            1 for ex in raw for row in (ex.get("finishedReps") or [])
+            if isinstance(row, dict) and row.get("maxHeartRate")
+        )
+        self.logger.info("Heart-rate: %d sets with measured peaks", peaks)
         heart_points = []
         if recording_uuid:
             # Read-only cloud request with existing Bike/Nano session.
             # Do not log the UUID, response or any heart-rate measurement.
-            graph = self.request(
-                "/api/app/watchMsg/getHeartRateGraph?uuid=%s" %
-                quote(recording_uuid, safe=""),
-                allow_error=True,
-            )
-            heart_points = graph_points(graph)
-            self.logger.info(
-                "Heart-rate graph: %d measured samples",
-                len(heart_points)
-            )
+            try:
+                graph = self.request(
+                    "/api/app/watchMsg/getHeartRateGraph?uuid=%s" %
+                    quote(recording_uuid, safe=""),
+                    allow_error=True,
+                )
+                heart_points = graph_points(graph)
+            except APIError:
+                # Heart-rate data is optional; do not fail strength export.
+                self.logger.warning("Heart-rate graph request unavailable")
+            self.logger.info("Heart-rate graph: %d measured samples", len(heart_points))
         else:
             self.logger.info("Heart-rate graph unavailable: recording UUID missing")
         return dict(workout, exercises=exercises, heart_rate_points=heart_points)

@@ -12,6 +12,7 @@ from garmin_local_fit import (
     read_local_garmin_fit, match_local_garmin_fit, LocalGarminFitError,
 )
 from garmin_merge import PRIORITY_LABELS, check_priorities
+from speediance_api import APIError
 from garmin_personal import GarminPersonalClient, GarminPersonalError, match_activities
 from preferences import (saved_mappings, saved_weight_multipliers,
                          saved_merge_priorities, save_merge_priorities)
@@ -20,6 +21,17 @@ from windows_credentials import (save_garmin_api_key, load_garmin_api_key,
 
 logger = logging.getLogger("speediance_fit")
 API_KEY_PAGE = "https://connect.garmin.com/app/settings/personalApiToken"
+
+
+def details_or_history(client, workout):
+    """Keep already loaded history metrics if completed sets are unavailable."""
+    try:
+        return client.detail(workout)
+    except APIError as exc:
+        if "keine Übungsdetails" not in str(exc):
+            raise
+        logger.warning("Speediance set details unavailable; keeping original Garmin sets")
+        return dict(workout, exercises=[])
 
 
 class GarminMergeDialog(tk.Toplevel):
@@ -64,7 +76,8 @@ class GarminMergeDialog(tk.Toplevel):
         ttk.Label(outer, text=tr(
             "Garmin-FIT als Grundlage: Originalaufzeichnung, Geräte- und "
             "Sensordaten bleiben erhalten. Die tatsächlichen Speediance-"
-            "Krafttrainingssätze werden ergänzt. Online bleibt alles unverändert."
+            "Krafttrainingssätze werden ergänzt, wenn verfügbar; sonst bleiben Garmin-Sätze erhalten. "
+            "Online bleibt alles unverändert."
         ), wraplength=745).pack(anchor="w", pady=(3, 10))
 
         credentials = ttk.LabelFrame(outer, text=tr("1 – Garmin-FIT-Quelle auswählen"),
@@ -358,7 +371,7 @@ class GarminMergeDialog(tk.Toplevel):
             # per-account completed-workout cache.
             fit = (local_fit if source == "file"
                    else client.download_activity_fit(candidate["id"]))
-            detail = self.app.client.detail(self.workout)
+            detail = details_or_history(self.app.client, self.workout)
             result, meta = overlay_garmin_fit(
                 fit, detail, path, priority,
                 overrides=saved_mappings(),
@@ -389,12 +402,13 @@ class GarminMergeDialog(tk.Toplevel):
                 self.app.tr("Zusammenführung abgeschlossen"),
                 self.app.tr("Garmin-originalbasierte FIT-Datei gespeichert:\n%s\n\n"
                             "Speediance-Krafttrainingssätze: %d\n"
+                            "Erhaltene Garmin-Sätze: %d\n"
                             "Garmin-Geräteinformationen erhalten: %d\n"
                             "Zusätzliche HF-Records: %d\n"
                             "Außerhalb der gewählten Dauer: %d\n\n"
                             "Garmin Connect wurde NICHT verändert.") %
                 (str(output), meta["new_speediance_sets"],
-                 meta["garmin_device_info"], meta["added_hr_records"],
+                 meta["preserved_native_sets"], meta["garmin_device_info"], meta["added_hr_records"],
                  meta["out_of_window_samples"]),
                 parent=self,
             )

@@ -41,6 +41,7 @@ class MappingEditor(tk.Toplevel):
         self.visible_names = []
         self.selected_name = None
         self.result_rows = []
+        self.chosen_garmin = None  # Explicitly chosen on the right; never infer from prior mapping.
 
         self.left_search = tk.StringVar()
         self.query = tk.StringVar()
@@ -50,6 +51,7 @@ class MappingEditor(tk.Toplevel):
         self.current = tk.StringVar(value=self.tr("Noch keine Übung ausgewählt"))
         self.assigned_label = tk.StringVar(value=self.tr("Noch keine Garmin-Übung gewählt"))
         self.result_count = tk.StringVar()
+        self.feedback = tk.StringVar(value=self.tr("Links und rechts eine Übung auswählen."))
         self.manual_mode = tk.BooleanVar(value=False)
 
         self.filters = [(self.tr("Alle Kategorien"), None)] + list(
@@ -63,6 +65,8 @@ class MappingEditor(tk.Toplevel):
         self._refresh_results()
         self.left_search.trace_add("write", lambda *_: self._refresh_left())
         self.query.trace_add("write", lambda *_: self._refresh_results())
+        self.category.trace_add("write", lambda *_: self._update_assign_state())
+        self.subtype.trace_add("write", lambda *_: self._update_assign_state())
 
     def _build(self):
         frame = ttk.Frame(self, padding=12)
@@ -82,7 +86,7 @@ class MappingEditor(tk.Toplevel):
         )
         ttk.Label(
             frame,
-            text=self.tr("Speediance-Übung links auswählen, rechts im vollständigen Garmin-Katalog suchen und die Zuordnung speichern."),
+            text=self.tr("Links die Speediance-Übung und rechts die Garmin-Übung wählen, dann auf „Zuordnen“ klicken. Die Zuordnung erscheint sofort links."),
             wraplength=1030,
         ).pack(anchor="w", pady=(0, 8))
 
@@ -157,6 +161,11 @@ class MappingEditor(tk.Toplevel):
 
         ttk.Label(right, textvariable=self.result_count, foreground="#555").grid(
             row=5, column=0, sticky="w", pady=(6, 0))
+        self.assign_button = ttk.Button(
+            right, text=self.tr("← Zuordnen"),
+            command=self.assign, state="disabled"
+        )
+        self.assign_button.grid(row=6, column=0, sticky="e", pady=(8, 0))
 
         bottom = ttk.LabelFrame(frame, text=self.tr("Zuordnung bearbeiten"), padding=9)
         bottom.pack(fill="x", pady=(8, 0))
@@ -164,6 +173,8 @@ class MappingEditor(tk.Toplevel):
             anchor="w")
         ttk.Label(bottom, textvariable=self.assigned_label).pack(
             anchor="w", pady=(2, 4))
+        ttk.Label(bottom, textvariable=self.feedback, foreground="#23754a").pack(
+            anchor="w", pady=(1, 5))
         code_line = ttk.Frame(bottom)
         code_line.pack(fill="x")
         ttk.Label(code_line, text=self.tr("Kategorie (FIT):")).pack(side="left")
@@ -186,10 +197,8 @@ class MappingEditor(tk.Toplevel):
 
         controls = ttk.Frame(frame)
         controls.pack(fill="x", pady=(9, 0))
-        ttk.Button(controls, text=self.tr("Zuordnung speichern"),
-                   command=self.save).pack(side="left")
         ttk.Button(controls, text=self.tr("Zuordnung entfernen"),
-                   command=self.remove).pack(side="left", padx=(8, 0))
+                   command=self.remove).pack(side="left")
         ttk.Button(controls, text=self.tr("Schließen"),
                    command=self.destroy).pack(side="right")
 
@@ -209,6 +218,7 @@ class MappingEditor(tk.Toplevel):
         category_id = self.filter_lookup.get(self.category_choice.get())
         current = self.selected_name
         old_codes = (self.category.get(), self.subtype.get())
+        old_choice = self.chosen_garmin
         self.language = selected
         self.filters = [(self.tr("Alle Kategorien"), None)] + list(
             category_filters(self.language)
@@ -223,15 +233,15 @@ class MappingEditor(tk.Toplevel):
         self._build()
         self._refresh_left(selected=current)
         self._refresh_results()
-        self._restore_picker_state(current, old_codes)
-        # Treeview emits selection events after rebuild. Restore draft IDs
-        # once they have settled so switching DE/EN cannot discard an
-        # unsaved user-selected Garmin exercise.
-        self.after_idle(lambda: self._restore_picker_state(current, old_codes))
+        self._restore_picker_state(current, old_codes, old_choice)
+        # Treeview can emit a selection event after rebuild; restore the
+        # pending right-side choice once the callbacks have settled.
+        self.after_idle(lambda: self._restore_picker_state(current, old_codes, old_choice))
         self.toggle_manual()
 
-    def _restore_picker_state(self, name, codes):
+    def _restore_picker_state(self, name, codes, choice=None):
         self.selected_name = name
+        self.chosen_garmin = choice
         self.current.set(name or self.tr("Noch keine Übung ausgewählt"))
         self.category.set(codes[0])
         self.subtype.set(codes[1])
@@ -241,6 +251,7 @@ class MappingEditor(tk.Toplevel):
             )
         else:
             self.assigned_label.set(self.tr("Noch keine Garmin-Übung gewählt"))
+        self._update_assign_state()
 
     def _refresh_left(self, selected=None):
         search = normalize_query(self.left_search.get())
@@ -271,6 +282,10 @@ class MappingEditor(tk.Toplevel):
         return self.tr("Kategorie %d / ID %d") % (cat, sub)
 
     def _refresh_results(self):
+        # Results change with search and category: an old right-side selection
+        # must not remain assignable if it is no longer visible.
+        self.chosen_garmin = None
+        self._update_assign_state()
         category = self.filter_lookup.get(self.category_choice.get())
         self.result_rows, total = search_options(
             self.query.get(), category, self.language, limit=180
@@ -295,12 +310,20 @@ class MappingEditor(tk.Toplevel):
         i = int(rows[0])
         if i >= len(self.visible_names):
             return
-        self.selected_name = self.visible_names[i]
+        new_name = self.visible_names[i]
+        if new_name != self.selected_name:
+            self.chosen_garmin = None
+            chosen = self.results_table.selection()
+            if chosen:
+                self.results_table.selection_remove(*chosen)
+        self.selected_name = new_name
         self.current.set(self.selected_name)
         cat, sub = fit_exercise(self.selected_name, overrides=saved_mappings())
         self.category.set(str(cat) if sub is not None else "")
         self.subtype.set(str(sub) if sub is not None else "")
         self.assigned_label.set(self._label_for_codes(cat, sub))
+        self.feedback.set(self.tr("Rechts eine Garmin-Übung auswählen."))
+        self._update_assign_state()
         self.search_entry.focus_set()
 
     def choose_result(self, event=None):
@@ -311,15 +334,32 @@ class MappingEditor(tk.Toplevel):
         if i >= len(self.result_rows):
             return
         label, cat, sub, _ = self.result_rows[i]
+        self.chosen_garmin = (cat, sub)
         self.category.set(str(cat))
         self.subtype.set(str(sub))
         self.assigned_label.set(label.split("  ·  ", 1)[0])
-        # Selection is staged until Save mapping is clicked.
+        self.feedback.set(self.tr("Mit „← Zuordnen“ übernehmen."))
+        self._update_assign_state()
+
+    def _update_assign_state(self):
+        if not hasattr(self, "assign_button"):
+            return
+        chosen = self.chosen_garmin is not None
+        if self.manual_mode.get():
+            try:
+                cat, sub = int(self.category.get()), int(self.subtype.get())
+                chosen = 0 <= cat < 65534 and 0 <= sub < 65534
+            except (TypeError, ValueError):
+                chosen = False
+        self.assign_button.configure(
+            state="normal" if self.selected_name and chosen else "disabled"
+        )
 
     def toggle_manual(self):
         state = "normal" if self.manual_mode.get() else "readonly"
         self.category_entry.configure(state=state)
         self.subtype_entry.configure(state=state)
+        self._update_assign_state()
 
     def add_name(self):
         name = simpledialog.askstring(
@@ -334,7 +374,8 @@ class MappingEditor(tk.Toplevel):
         self._refresh_left(selected=name)
         self.select()
 
-    def save(self):
+    def assign(self):
+        """Save selected mapping immediately and update the left table in place."""
         name = self.selected_name
         if not name:
             messagebox.showinfo(
@@ -360,13 +401,16 @@ class MappingEditor(tk.Toplevel):
                 parent=self,
             )
             return
+        # The next lookup on the left reads the persisted codes. No extra
+        # save button and no blocking confirmation dialog are needed.
+        self.chosen_garmin = None
         self._refresh_left(selected=name)
         self.assigned_label.set(self._label_for_codes(cat, sub))
-        messagebox.showinfo(
-            self.tr("Zuordnung"),
-            self.tr("Zuordnung lokal gespeichert. Für Garmin bitte FIT-Dateien erneut exportieren."),
-            parent=self,
+        self.feedback.set(
+            self.tr("Zuordnung gespeichert: %s → %s")
+            % (name, self._label_for_codes(cat, sub))
         )
+        self._update_assign_state()
 
     def remove(self):
         if not self.selected_name:
@@ -379,5 +423,7 @@ class MappingEditor(tk.Toplevel):
                 parent=self,
             )
             return
+        self.chosen_garmin = None
         self._refresh_left(selected=self.selected_name)
         self.select()
+        self.feedback.set(self.tr("Zuordnung entfernt."))

@@ -1,6 +1,7 @@
 """Anonymized GM Manager history CSV regression cases (no real user data)."""
 import csv
 from io import StringIO
+from datetime import timedelta
 from pathlib import Path
 import sys
 from tempfile import TemporaryDirectory
@@ -12,7 +13,8 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 from gm_history_import import GMHistoryCSVError, parse_gm_history_csv, load_gm_history_file
 from garmin_fit_overlay import overlay_garmin_fit
 from garmin_merge import DEFAULT_PRIORITIES
-from test_garmin_fit_overlay import original_garmin_fit, values, all_message_data, speediance_executed
+from test_garmin_fit_overlay import (original_garmin_fit, values, all_message_data,
+                                     speediance_executed, GARMIN_START)
 
 
 COLUMNS = [
@@ -148,6 +150,10 @@ class GMHistoryImportTests(unittest.TestCase):
         recorded = parse_gm_history_csv(fixture_csv(), SELECTED)
         speediance = speediance_executed()
         speediance.update({
+            # Reproduce the genuine account timing: the completed workout
+            # began 95 seconds before the original Garmin activity. This
+            # used to fail at fitwriter.py with a bare ValueError.
+            "started_at": (GARMIN_START - timedelta(seconds=95)).isoformat(),
             "exercises": recorded["exercises"],
             "unit": "kg",
             "_set_source": "gm_manager_history_csv",
@@ -165,10 +171,13 @@ class GMHistoryImportTests(unittest.TestCase):
             )
             result = out.read_bytes()
         self.assertEqual(metadata["speediance_source"], "gm_manager_history_csv")
+        self.assertTrue(metadata["set_timing_aligned_to_activity_start"])
         self.assertEqual(metadata["new_speediance_sets"], 27)
         self.assertEqual(metadata["replaced_garmin_sets"], 1)
         self.assertEqual(metadata["speediance_repetitions"], 184)
         self.assertEqual(len(values(result, 225)), 27)
+        from fitwriter import stamp
+        self.assertEqual(values(result, 225)[0][6][1], stamp(GARMIN_START))
         self.assertEqual(values(result, 225)[0][3][1], 0)  # timed set, not 300 reps
         self.assertEqual(values(result, 225)[1][3][1], 0)
         for index in (16, 17, 18):

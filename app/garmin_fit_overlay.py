@@ -248,9 +248,9 @@ def overlay_garmin_fit(original, speediance, destination, priorities=None,
                 overrides=overrides, weight_overrides=weight_overrides,
             )
             generated = parse_fit_wire(temp_path.read_bytes())
-        new_strength = [_from_message(entry)
-                        for entry in generated if entry["kind"] == "data"
-                        and entry["global"] in (225, 264)]
+    new_strength = [_from_message(entry)
+                    for entry in generated if entry["kind"] == "data"
+                    and entry["global"] in (225, 264)]
     if not any(c["kind"] == "data" and c["global"] == 225 for c in generated):
         raise GarminOverlayError("Keine aufgezeichneten Speediance-Sätze")
 

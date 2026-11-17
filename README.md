@@ -1,4 +1,4 @@
-# Speediance FIT Exporter (Beta 0.1.16)
+# Speediance FIT Exporter (Beta 0.1.17)
 
 Lokale Windows-10/11-Anwendung zum Abruf abgeschlossener Speediance-Trainingseinheiten aus dem eigenen Account und zum Export als Garmin-FIT-Aktivitäten. Die Speediance-API ist **inoffiziell**; der Login ist ohne echten Testaccount nicht verifiziert.
 
@@ -171,6 +171,23 @@ Die neue Diagnosezeile `Heart-rate sample structure unrecognized:` enthält ab 0
 Die Ausgabe enthält **keine** Herzfrequenz-Messwerte, Zeitstempel, Gerätekennungen oder beliebigen unbekannten Feldnamen. So lässt sich der verbleibende Fehler gezielt eingrenzen. Die bisherigen FIT-Trainingsdaten und echte HF-Messwerte werden unverändert behandelt.
 
 **Test:** Mit 0.1.16 das Training vom 16.11. erneut exportieren und die neue Warnzeile aus `Diagnose anzeigen…` bereitstellen. Falls nun Messpunkte erkannt werden, in Garmin Connect kontrollieren, ob ein vollständiger Verlauf erscheint. Es werden keine Pulsdaten aus einer Fenix-FIT-Datei übernommen.
+
+## 0.1.17 – 942 echte Herzfrequenzwerte mit Speediance-Zeitstempeln
+
+Das reale Protokoll von v0.1.16 hat die Ursache präzise lokalisiert:
+`heartRates` enthält **942 Objekte** mit **942 gültigen `heartRate`-Werten** (`int`); auch `time` ist **942-mal `int`**, aber **alle Werte sind größer als 86.400**. Bisher wurden die Messungen vollständig verworfen, weil der Parser ausschließlich Sekunden seit Trainingsbeginn unterhalb von 24 Stunden erlaubte.
+
+**Korrektur:** Der Exporter klassifiziert die `time`-Werte jetzt pro Aufzeichnung und unterstützt unter anderem:
+
+- absolute Unix-Zeitstempel in Sekunden, Millisekunden oder Mikrosekunden; sie werden mit dem wirklichen Trainingsbeginn verglichen
+- Sekunden/Millisekunden seit Trainingsbeginn und gegebenenfalls lokale Tageszeit
+- unbekannte Zeitursprünge mit plausibler *echter* Zeitdifferenz: Relativzeit wird an den Trainingsbeginn angehängt; diese Platzierung ist in Exportmeldung und Diagnose ausdrücklich als **geschätzt** gekennzeichnet
+
+Die echten BPM-Messungen werden nicht interpoliert oder verändert, ebenso wenig werden die Zeitabstände zwischen den Messungen absichtlich gestreckt. Aufzeichnungen, deren Zeitwerte nicht sicher oder zumindest plausibel in diese Skalen fallen, bleiben sicherheitshalber ohne erfundene Herzfrequenzkurve. Die anonymisierte Diagnose nennt `time_mode` und die Zahl ausgelassener Zeitpunkte.
+
+**Einheitliche Trainingsuhr:** FIT-Sitzung und HR-Import nutzen dieselbe Berechnung des Trainingsbeginns; wenn die abgeschlossene Trainingshistorie eine `startTime` liefert, wird diese statt eines aus Endzeit minus Dauer berechneten Starts verwendet. Der gewohnte direkte Speediance→Garmin-FIT-Export bleibt der einzige Workflow; die Fenix-8-Datei dient nur als Referenz und wird nicht eingemischt.
+
+**Überprüfung:** Mit 0.1.17 die Trainingseinheit vom 16.11.2026 erneut exportieren. Erwartet wird, dass im Diagnoseprotokoll jetzt ein `time_mode=` erscheint und bei unterstützten Zeittypen die 942 Speediance-Pulswerte als FIT-`record`-Messpunkte übernommen werden. Die tatsächliche Zeitkonvention wird erst durch diesen Praxis-Test bestätigt; bei `0 measured samples` bitte die vollständige `Heart-rate graph:`-Zeile bereitstellen.
 
 ## Windows-Installer
 

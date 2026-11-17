@@ -82,7 +82,7 @@ class ShapeDiagnosticTests(unittest.TestCase):
         self.assertIsNone(completed_record_reference({"aiEntryPageReq": {
             "trainingParam": {"recordId": "../not-valid"}}}))
         self.assertIsNone(completed_record_reference({"aiEntryPageReq": {
-            "trainingParam": {"recordId": 12345}}))
+            "trainingParam": {"recordId": 12345}}}))
 
     def test_completed_record_probe_get_only_and_logs_no_values(self):
         logger = logging.getLogger("test-completed-ref-probe")

@@ -11,8 +11,8 @@ No changes are made to any Garmin Connect activity or the downloaded file.
 """
 from bisect import bisect_left
 from collections import Counter, defaultdict
-from datetime import datetime
-from hashlib import sha256
+from datetime import datetime, timezone
+from secrets import randbits
 from pathlib import Path
 from tempfile import TemporaryDirectory
 import struct
@@ -218,8 +218,8 @@ def overlay_garmin_fit(original, speediance, destination, priorities=None,
                        speediance_fit_bytes=None):
     """Use the Garmin FIT as binary base, supplement with Speediance sets.
 
-    FIT manufacturer in the new *file_id* is DEVELOPMENT, with a stable,
-    derivative serial number. The authentic Garmin device_info messages and
+    FIT manufacturer in the new *file_id* is DEVELOPMENT, with a fresh
+    serial number and creation time on each export. The authentic Garmin device_info messages and
     all custom sensor data are retained as recorded, but the derivative does
     not falsely claim to be an untouched original Garmin file.
     """
@@ -348,8 +348,23 @@ def overlay_garmin_fit(original, speediance, destination, priorities=None,
         session_changes[7] = duration * 1000
         session_changes[8] = duration * 1000
 
-    salt = sha256(original + str(speediance.get("training_id") or "").encode()).digest()
-    derivative_serial = int.from_bytes(salt[:4], "little") or 1
+    # A new FIT must not inherit the Garmin recording's file identity.
+    # This is separate from the genuine activity/session/record timestamps.
+    file_ids = [entry for entry in wire
+                if entry["kind"] == "data" and entry["global"] == 0]
+    if len(file_ids) != 1 or not all(
+        number in file_ids[0]["offsets"] for number in (1, 2, 3, 4)
+    ):
+        raise GarminOverlayError(
+            "Garmin file_id ohne erforderliche Identitätsfelder")
+    original_serial = _get_numeric(file_ids[0], 3)
+    original_created = _get_numeric(file_ids[0], 4)
+    derivative_serial = randbits(32)
+    while not derivative_serial or derivative_serial == original_serial:
+        derivative_serial = randbits(32)
+    derivative_created = stamp(datetime.now(timezone.utc))
+    if derivative_created == original_created:
+        derivative_created += 1
     definitions = {}
     out = bytearray()
     patched_hr = 0
@@ -377,7 +392,7 @@ def overlay_garmin_fit(original, speediance, destination, priorities=None,
         if num == 0:
             # Derived file identity avoids reusing the original watch's
             # file id and does not forge a new Garmin activity.
-            changes = {1: 255, 2: 0, 3: derivative_serial}
+            changes = {1: 255, 2: 0, 3: derivative_serial, 4: derivative_created}
         elif num == 18:
             changes = session_changes
         elif num == 19 and original_counts[19] == 1:
@@ -412,6 +427,13 @@ def overlay_garmin_fit(original, speediance, destination, priorities=None,
         1 for x in generated if x["kind"] == "data" and x["global"] == 225)
     if final_counts[225] != (expected_strength if replace_native_sets else native_sets):
         raise GarminOverlayError("SET-Anzahl nach Garmin-Overlay inkonsistent")
+    emitted_ids = [x for x in final if x["kind"] == "data" and x["global"] == 0]
+    if len(emitted_ids) != 1 or any(
+        _get_numeric(emitted_ids[0], number) != value
+        for number, value in ((1, 255), (2, 0), (3, derivative_serial),
+                              (4, derivative_created))
+    ):
+        raise GarminOverlayError("Neue FIT-Dateiidentität konnte nicht gesetzt werden")
     for num, count in original_counts.items():
         if num not in (225, 20, 264) and final_counts[num] != count:
             raise GarminOverlayError("Garmin-Originaldaten gingen beim Merge verloren")

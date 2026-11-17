@@ -543,6 +543,50 @@ FIT-Export.** Erst eine Antwort mit nachweislich abgeschlossenen Sätzen
 rechtfertigt eine Änderung der Exportlogik. So vermeiden wir
 eine erneute falsche Erfolgsmeldung oder erfundene Trainingsdaten.
 
+## 0.1.27-beta – Bestätigte GM-Manager-Satzwerte für Garmin-FIT-Merge
+
+Wenn Speediance für eine abgeschlossene Trainingseinheit keine Sätze mehr
+über die offizielle/unoffizielle Detail-API liefert, kannst du im
+**Garmin-Abgleich** optional eine lokale GM-Manager-JSON-Datei verwenden.
+
+1. Trainingshistorie laden und **die tatsächlich absolvierte Trainingseinheit**
+   auswählen.
+2. **Mit Garmin abgleichen…** öffnen.
+3. Unter **Datenpriorität** auf **GM-Manager-JSON wählen…** klicken und die
+   bereits aus GM Manager exportierte Datei auswählen (Format:
+   `app: gmvoice-speediance`, `kind: custom-workouts`, `version: 1`).
+4. Der Exporter verlangt einen **eindeutigen gleichen Trainingsnamen** und
+   zeigt vor Übernahme die Zahl der Übungen und Sätze. Bestätige nur dann,
+   wenn **die Wiederholungen und Gewichte tatsächlich absolviert wurden**
+   und die Einheit/Gewichtswerte richtig sind.
+5. Wie bisher die **originale Garmin-FIT** prüfen oder eine passende Garmin
+   Personal-API-Aktivität auswählen und dann **Zusammengeführte FIT speichern…**.
+
+Die GM-Manager-Datei selbst ist ein Export von **Planvorgaben**, keine
+aufgezeichnete Sitzung. Die explizite Bestätigung ist daher erforderlich;
+die Werte werden als **vom Nutzer bestätigt**, nicht als Live-Messungen
+von Speediance, gekennzeichnet. Die zehn-/hundertsekündigen Cardio- und
+Mattenangaben werden als **zeitbasierte Sätze** interpretiert, nicht als
+`300` Wiederholungen. Gewichte werden exakt übernommen (kein
+stillschweigendes Verdoppeln). Es werden keine Trainingsbeginne oder
+Kalorien aus dem GM-Manager-JSON erfunden.
+
+**Grenzen:** GM Manager liefert keine tatsächlich erfassten Satzzeitpunkte;
+diese werden innerhalb der ausgewählten Trainingsdauer geschätzt.
+Die originalen Garmin-Sensor- und `record`-Nachrichten bleiben erhalten,
+aber das bisherige Garmin-`SET` wird durch die bestätigten 24 Sätze (19
+Kraftsätze, 5 zeitbasierte Sätze im Referenztraining) ersetzt.
+Die Übungsnamen werden anhand der Gruppenkennungen lesend aus der
+Speediance-Übungsbibliothek nachgeladen, falls verfügbar. Scheitert das,
+wird die Gruppenkennung als Platzhalter im FIT-Übungsnamen sichtbar.
+Garmin Connect kann frei definierte Übungsnamen bei importierten Aktivitäten
+abweichend darstellen.
+
+Der Import erfordert **keine Änderung der Cloud-Trainingsdaten** und stellt
+keinen nachgewiesenen Fix des problematischen Detail-Endpunkts dar.
+Zur zuverlässigen Garmin-Connect-Anzeige ist ein echter manueller
+Importtest erforderlich.
+
 ## Windows-Installer
 
 GitHub → **Actions** → **Windows installer** → **Run workflow**. Nach einem erfolgreichen Lauf die Datei **SpeedianceFITExporter-Windows-Setup** unter **Artifacts** herunterladen und die darin enthaltene `SpeedianceFITExporter-Setup.exe` starten. Der Installer wird von GitHub auf Windows gebaut und benötigt beim Anwender kein Python. Eine nicht signierte EXE kann eine Windows-SmartScreen-Warnung auslösen.

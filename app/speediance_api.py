@@ -179,6 +179,9 @@ class Client:
 
         # Explicitly avoid path parameters in logs (training IDs).
         route = path.split("?")[0].rsplit("/", 1)[0] if "/trainingInfo/" in path else path.split("?")[0]
+        if route.startswith("/api/app/actionLibraryGroup/"):
+            # Exercise lookup IDs are not needed in shareable logs.
+            route = "/api/app/actionLibraryGroup/[id]"
         self.logger.info("API %s %s", method, route)
         request = urllib.request.Request(
             "https://" + self.host + path, data=data, headers=headers, method=method

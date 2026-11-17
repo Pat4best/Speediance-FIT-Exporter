@@ -17,6 +17,7 @@ from exercise_mapping import fit_exercise
 from windows_credentials import load_login, save_login, delete_login
 from preferences import export_folder, save_export_folder, saved_mappings, saved_weight_multipliers, remember_names, load_login_client_type, save_login_client_type
 from mapping_editor import MappingEditor
+from garmin_dialog import GarminMergeDialog
 from exercise_discovery import discover_names
 from preferences import load_language, save_language
 from i18n import translate
@@ -222,6 +223,11 @@ class App(tk.Tk):
         self.mapping_button = ttk.Button(actions, text=self.tr("Übungen zuordnen…"),
                                          command=self.manage_mappings)
         self.mapping_button.pack(side="left", padx=(10, 0))
+        self.garmin_merge_button = ttk.Button(
+            actions, text=self.tr("Mit Garmin abgleichen…"),
+            command=self.open_garmin_merge,
+        )
+        self.garmin_merge_button.pack(side="left", padx=(10, 0))
         diagnostics = ttk.Frame(footer)
         diagnostics.pack(fill="x", pady=(4, 0))
         ttk.Button(diagnostics, text=self.tr("Diagnose anzeigen…"),
@@ -343,7 +349,9 @@ class App(tk.Tk):
             return
         self.busy = True
         self.status.set(self.tr("Arbeite …"))
-        for button in (self.login_button, self.fetch_button, self.export_button, self.mapping_button):
+        for button in (self.login_button, self.fetch_button,
+                       self.export_button, self.mapping_button,
+                       self.garmin_merge_button):
             button.state(["disabled"])
 
         def worker():
@@ -354,7 +362,11 @@ class App(tk.Tk):
                 logger.error("Action failed: %s", type(exc).__name__)
                 # Our own APIError strings contain routes/error codes, not response bodies.
                 from speediance_api import APIError
-                display = str(exc) if isinstance(exc, APIError) else type(exc).__name__
+                from garmin_personal import GarminPersonalError
+                from garmin_fit_reader import GarminFitError
+                display = (str(exc) if isinstance(
+                    exc, (APIError, GarminPersonalError, GarminFitError)
+                ) else type(exc).__name__)
                 self.events.put(("error", display, None))
         threading.Thread(target=worker, daemon=True).start()
 
@@ -363,7 +375,9 @@ class App(tk.Tk):
             while True:
                 kind, callback, value = self.events.get_nowait()
                 self.busy = False
-                for button in (self.login_button, self.fetch_button, self.export_button, self.mapping_button):
+                for button in (self.login_button, self.fetch_button,
+                               self.export_button, self.mapping_button,
+                               self.garmin_merge_button):
                     button.state(["!disabled"])
                 if kind == "ok":
                     callback(value)
@@ -459,6 +473,25 @@ class App(tk.Tk):
             )
 
         self.run_job(lambda: self.client.list_workouts(start, end), done)
+
+    def open_garmin_merge(self):
+        """Optional read-only Garmin connection and explicit local merge."""
+        if self.busy:
+            return
+        if self.client is None:
+            messagebox.showinfo(
+                self.tr("Speediance-Anmeldung"),
+                self.tr("Bitte zuerst anmelden."),
+            )
+            return
+        indices = [int(i) for i in self.table.selection()]
+        if len(indices) != 1:
+            messagebox.showinfo(
+                self.tr("Eine Trainingseinheit auswählen"),
+                self.tr("Bitte genau eine Speediance-Trainingseinheit markieren."),
+            )
+            return
+        GarminMergeDialog(self, self.sessions[indices[0]])
 
     def export(self):
         indices = [int(i) for i in self.table.selection()]

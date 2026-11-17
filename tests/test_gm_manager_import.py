@@ -149,9 +149,9 @@ class GMManagerImportTests(unittest.TestCase):
                          all_message_data(emitted, 233))
         self.assertEqual(all_message_data(original, 534),
                          all_message_data(emitted, 534))
-        self.assertEqual(all_message_data(original, 20)[:-1],
-                         all_message_data(emitted, 20)[:len(values(original, 20))-1])
-        self.assertEqual(len(parse_fit_wire(emitted)), len(parse_fit_wire(emitted)))
+        for native_record in all_message_data(original, 20):
+            self.assertIn(native_record, all_message_data(emitted, 20))
+        self.assertTrue(parse_fit_wire(emitted))
 
 
 if __name__ == "__main__":

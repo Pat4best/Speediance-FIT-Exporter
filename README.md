@@ -1,4 +1,4 @@
-# Speediance FIT Exporter (Beta 0.1.15)
+# Speediance FIT Exporter (Beta 0.1.16)
 
 Lokale Windows-10/11-Anwendung zum Abruf abgeschlossener Speediance-Trainingseinheiten aus dem eigenen Account und zum Export als Garmin-FIT-Aktivitäten. Die Speediance-API ist **inoffiziell**; der Login ist ohne echten Testaccount nicht verifiziert.
 
@@ -157,6 +157,20 @@ Das reale Diagnoseprotokoll der Trainingseinheit vom 16.11.2026 zeigte **942 `he
 Das bisherige Eingabefeld **„HF-Sensor (optional)“** wurde **vollständig entfernt**, ebenso die Speicherung neuer manueller Angaben. Die bereits lokal gespeicherte Einstellung `hr_sensor_name` wird nicht mehr gelesen oder verwendet. Falls die Speediance-API selbst ein bekanntes Herzfrequenz-Gerätemodell übermittelt, darf es weiterhin automatisch in die FIT-`device_info`-Nachricht übernommen werden. Garmin Connect entscheidet selbst, ob eine solche Metadaten-Nachricht bei manuell importierten Aktivitäten angezeigt wird.
 
 **Hinweis:** Eine bei Garmin Connect vorhandene FIT-Datei mit einer echten HF-Kurve ist ein wertvoller technischer Vergleich für die `record`- und `device_info`-Felder. Die API gibt noch keinen Zugriff auf solche Referenzdateien; diese müssen als tatsächliche `.fit`-Datei im Chat angehängt werden.
+
+## 0.1.16 – Herzfrequenz-Diagnose konkretisiert
+
+Das reale Protokoll von 0.1.15 zeigt `heartRates` mit **942 Objekten**, in denen `heartRate` und `time` vorhanden sind; bisher werden daraus dennoch null gültige Messpunkte. Die Ursache steht noch **nicht** fest – möglich sind beispielsweise null/ungültige Pulswerte, spezielle Zeitformate oder ein verschachtelter Datentyp.
+
+Die neue Diagnosezeile `Heart-rate sample structure unrecognized:` enthält ab 0.1.16 zusätzlich:
+
+- `heartRate_types` – nur Datentyp und Anzahl des Feldes `heartRate`
+- `heartRate_status` – Anzahlen von `valid`, `zero`, `below_range`, `above_range`, `nonnumeric`, `absent`
+- `time_types` und `time_status` – Zeitwerttypen und Zählwerte
+
+Die Ausgabe enthält **keine** Herzfrequenz-Messwerte, Zeitstempel, Gerätekennungen oder beliebigen unbekannten Feldnamen. So lässt sich der verbleibende Fehler gezielt eingrenzen. Die bisherigen FIT-Trainingsdaten und echte HF-Messwerte werden unverändert behandelt.
+
+**Test:** Mit 0.1.16 das Training vom 16.11. erneut exportieren und die neue Warnzeile aus `Diagnose anzeigen…` bereitstellen. Falls nun Messpunkte erkannt werden, in Garmin Connect kontrollieren, ob ein vollständiger Verlauf erscheint. Es werden keine Pulsdaten aus einer Fenix-FIT-Datei übernommen.
 
 ## Windows-Installer
 

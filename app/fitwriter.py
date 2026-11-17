@@ -9,6 +9,7 @@ import struct
 
 from exercise_mapping import fit_exercise, UNKNOWN
 from weight_handling import weight_multiplier_for
+from activity_time import activity_bounds
 
 FIT_EPOCH = datetime(1989, 12, 31, tzinfo=timezone.utc)
 FORMATS = {0: "B", 2: "B", 0x84: "H", 0x86: "I", 0x8C: "I"}
@@ -73,21 +74,10 @@ def write_fit(workout, destination, overrides=None, weight_overrides=None):
     had a missing architecture byte, wrong sport type and malformed set fields.
     No GPS, heart-rate or cadence readings are made up.
     """
-    day = workout["day"]
-    finished = workout.get("finished_at")
-    try:
-        end = datetime.fromisoformat(str(finished).replace("Z", "+00:00")) if finished else None
-    except ValueError:
-        end = None
-
-    sets = [(ex.get("name") or "Übung", item) for ex in workout.get("exercises", []) for item in ex.get("sets", [])]
-    measured_seconds = sum(max(0, int(float(s.get("seconds") or 0))) for _, s in sets)
-    configured_seconds = int(float(workout.get("duration_min") or 0) * 60)
-    duration = max(60, configured_seconds, measured_seconds, len(sets))
-    start = end - timedelta(seconds=duration) if end else datetime.fromisoformat(day + "T12:00:00")
+    start, end, duration = activity_bounds(workout)
+    duration_ms = duration * 1000
     start_ts = stamp(start)
     end_ts = stamp(start + timedelta(seconds=duration))
-    duration_ms = duration * 1000
     calories = max(0, min(65534, int(float(workout.get("calories") or 0))))
     serial = int(workout.get("training_id") or 1) & 0xFFFFFFFF or 1
     unit_factor = 0.45359237 if workout.get("unit") == "lb" else 1.0

@@ -147,3 +147,37 @@ def set_override(name, category, subtype, root=DEFAULT_ROOT):
     names.add(name.strip())
     data["names"] = sorted(names)
     _save(file, data)
+
+
+def saved_weight_multipliers(root=DEFAULT_ROOT):
+    """Explicit per-exercise multiplier for fallback single-weight API values."""
+    raw = _read(_mapping_path(root)).get("weight_multipliers", {})
+    result = {}
+    if isinstance(raw, dict):
+        for name, value in raw.items():
+            if isinstance(name, str) and type(value) is int and value in (1, 2):
+                key = normalize(name)
+                if key:
+                    result[key] = value
+    return result
+
+
+def set_weight_multiplier(name, multiplier, root=DEFAULT_ROOT):
+    """Remember x1/x2 independently of Garmin exercise IDs.
+
+    Explicit x1 is retained to override the automatic dual-handle x2 guess.
+    """
+    key = normalize(name)
+    if not key:
+        raise ValueError("Übungsname darf nicht leer sein")
+    if type(multiplier) is not int or multiplier not in (1, 2):
+        raise ValueError("Gewichtsfaktor muss 1 oder 2 sein")
+    path = _mapping_path(root)
+    data = _read(path)
+    values = saved_weight_multipliers(root)
+    values[key] = multiplier
+    data["weight_multipliers"] = values
+    names = set(observed_names(root))
+    names.add(name.strip())
+    data["names"] = sorted(names)
+    _save(path, data)

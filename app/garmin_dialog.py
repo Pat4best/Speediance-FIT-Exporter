@@ -8,6 +8,8 @@ import webbrowser
 
 from fitwriter import write_fit
 from garmin_fit_overlay import overlay_garmin_fit, GarminOverlayError
+from gm_manager_import import (GMManagerImportError, load_gm_manager_file,
+                               resolve_exercise_names)
 from garmin_local_fit import (
     read_local_garmin_fit, match_local_garmin_fit, LocalGarminFitError,
 )
@@ -44,6 +46,7 @@ class GarminMergeDialog(tk.Toplevel):
         self.garmin_client = None
         self.local_fit_bytes = None
         self.source_verified = None
+        self.gm_manager_import = None
         self.title(app.tr("Garmin-FIT-Quellen – Abgleich und Merge"))
         self.transient(app)
         w = min(850, max(640, app.winfo_screenwidth() - 80))
@@ -136,10 +139,22 @@ class GarminMergeDialog(tk.Toplevel):
             ).grid(row=i // 2, column=(i % 2) * 2 + 1, sticky="ew", pady=4)
             self.priorities[key] = value
         ttk.Label(priority_frame, text=tr(
-            "Übungen, Sätze, Wiederholungen und tatsächliche Gewichte: immer Speediance. "
-            "Fehlende Messwerte können aus der jeweils anderen Quelle ergänzt werden."
+            "Übungsdaten aus Speediance; alternativ bestätigte Werte aus GM Manager. "
+            "Satzzeitpunkte ohne Aufzeichnung sind geschätzt."
         ), wraplength=730, foreground="#555").grid(
             row=3, column=0, columnspan=4, sticky="w", pady=(8, 0))
+        self.gm_manager_status = tk.StringVar(
+            value=tr("Optional: GM-Manager-Export wählen und als absolviert bestätigen.")
+        )
+        ttk.Button(
+            priority_frame, text=tr("GM-Manager-JSON wählen…"),
+            command=self._pick_gm_manager_export,
+        ).grid(row=4, column=0, columnspan=2, sticky="w", pady=(6, 2), padx=(3, 0))
+        ttk.Label(
+            priority_frame, textvariable=self.gm_manager_status,
+            wraplength=360, foreground="#555",
+        ).grid(row=4, column=2, columnspan=2, sticky="w", padx=(8, 0))
+
 
         matched = ttk.LabelFrame(outer, text=tr("3 – Passende Garmin-Aktivität wählen"),
                                  padding=8)
@@ -207,6 +222,49 @@ class GarminMergeDialog(tk.Toplevel):
             self.local_file_path.set(selected)
             self.source_choice.set("file")
             self._reset_search()
+
+    def _pick_gm_manager_export(self):
+        if self.app.busy:
+            return
+        target = filedialog.askopenfilename(
+            parent=self,
+            title=self.app.tr("GM-Manager-Trainingsdatei wählen"),
+            filetypes=[("JSON", "*.json")],
+        )
+        if not target:
+            return
+        try:
+            parsed = load_gm_manager_file(target, self.workout)
+        except GMManagerImportError as exc:
+            messagebox.showerror(
+                self.app.tr("GM-Manager-Import"), str(exc), parent=self,
+            )
+            return
+        prompt = self.app.tr(
+            "Dieser GM-Manager-Export enthält Vorgaben, keine nachgewiesenen "
+            "Satz-Aufzeichnungen. Bestätigst du, dass die angegebenen "
+            "Wiederholungen und Gewichte bei der ausgewählten Trainingseinheit "
+            "tatsächlich absolviert wurden?\n\n"
+            "Übungen: %d, Kraftsätze: %d, Zeitsätze: %d, Gewichte: %s.\n"
+            "Garmin-Zeiten und Sensoraufzeichnung bleiben erhalten; "
+            "Satzzeitpunkte werden geschätzt und die Gewichte nicht verdoppelt."
+        ) % (parsed["exercise_count"], parsed["strength_set_count"],
+             parsed["timed_set_count"], parsed["unit"])
+        if not messagebox.askyesno(self.app.tr("Absolvierte Sätze bestätigen"),
+                                   prompt, parent=self):
+            return
+        self.gm_manager_import = parsed
+        self.gm_manager_status.set(
+            self.app.tr("Bestätigt: %d Übungen, %d Sätze (davon %d Kraft).") %
+            (parsed["exercise_count"], parsed["set_count"],
+             parsed["strength_set_count"])
+        )
+        logger.info(
+            "User-confirmed GM Manager import selected: exercise_count=%d "
+            "sets=%d strength_sets=%d timed_sets=%d",
+            parsed["exercise_count"], parsed["set_count"],
+            parsed["strength_set_count"], parsed["timed_set_count"],
+        )
 
     def _show_matches(self, candidates, source_name):
         self.candidates = candidates
@@ -364,6 +422,7 @@ class GarminMergeDialog(tk.Toplevel):
         client = self.garmin_client
         local_fit = self.local_fit_bytes
         source = self.source_verified
+        confirmed_gm = self.gm_manager_import
         def job():
             # The Garmin original is either the local verified FIT or the
             # authenticated Personal API download. Completed Strength sets
@@ -371,7 +430,20 @@ class GarminMergeDialog(tk.Toplevel):
             # per-account completed-workout cache.
             fit = (local_fit if source == "file"
                    else client.download_activity_fit(candidate["id"]))
-            detail = details_or_history(self.app.client, self.workout)
+            if confirmed_gm is not None:
+                # The user confirmed the exported values match this completed
+                # session. Do not pretend the plan file is API telemetry.
+                # Garmin's genuine HR and device records remain the base.
+                detail = dict(
+                    self.workout,
+                    exercises=resolve_exercise_names(self.app.client, confirmed_gm),
+                    unit=confirmed_gm["unit"],
+                    heart_rate_points=[],
+                    heart_rate_summary={},
+                    _set_source="gm_manager_confirmed",
+                )
+            else:
+                detail = details_or_history(self.app.client, self.workout)
             result, meta = overlay_garmin_fit(
                 fit, detail, path, priority,
                 overrides=saved_mappings(),
@@ -398,9 +470,14 @@ class GarminMergeDialog(tk.Toplevel):
                 meta["added_hr_records"],
                 meta["patched_hr_records"],
             )
+            source_note = (
+                self.app.tr("Satzquelle: vom Nutzer bestätigter GM-Manager-Export. "
+                            "Satzzeitpunkte sind geschätzt.\n\n")
+                if meta.get("speediance_source") == "gm_manager_confirmed" else ""
+            )
             messagebox.showinfo(
                 self.app.tr("Zusammenführung abgeschlossen"),
-                self.app.tr("Garmin-originalbasierte FIT-Datei gespeichert:\n%s\n\n"
+                source_note + self.app.tr("Garmin-originalbasierte FIT-Datei gespeichert:\n%s\n\n"
                             "Speediance-Krafttrainingssätze: %d\n"
                             "Erhaltene Garmin-Sätze: %d\n"
                             "Garmin-Geräteinformationen erhalten: %d\n"

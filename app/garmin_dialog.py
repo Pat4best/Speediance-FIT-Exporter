@@ -56,8 +56,9 @@ class GarminMergeDialog(tk.Toplevel):
         ttk.Label(outer, text=tr("Garmin-Aktivität mit Speediance zusammenführen"),
                   font=("Segoe UI", 12, "bold")).pack(anchor="w")
         ttk.Label(outer, text=tr(
-            "Nur Lesen über die offizielle Garmin Personal API. "
-            "Die ursprüngliche Garmin-Connect-Aktivität bleibt unverändert."
+            "Garmin-FIT als Grundlage: Originalaufzeichnung, Geräte- und "
+            "Sensordaten bleiben erhalten. Die tatsächlichen Speediance-"
+            "Krafttrainingssätze werden ergänzt. Online bleibt alles unverändert."
         ), wraplength=745).pack(anchor="w", pady=(3, 10))
 
         credentials = ttk.LabelFrame(outer, text=tr("1 – Persönlicher Garmin-API-Schlüssel"),
@@ -117,9 +118,10 @@ class GarminMergeDialog(tk.Toplevel):
         self.match_combo.pack(fill="x", pady=(7, 0))
 
         ttk.Label(outer, text=tr(
-            "Es wird eine NEUE lokale FIT-Datei erstellt. Ein manueller Import in "
-            "Garmin Connect kann eine zweite Aktivität erzeugen. "
-            "Keine Aktivitäten werden online gelöscht oder überschrieben."
+            "Neue FIT-Datei aus der ORIGINALEN Garmin-Aufzeichnung. "
+            "Für vollständige Garmin-Zeitachsen Garmin als Trainingsbeginn und "
+            "Trainingsdauer wählen. Ein manueller Import kann eine zweite "
+            "Aktivität erzeugen; online wird nichts gelöscht oder überschrieben."
         ), wraplength=750, foreground="#8a4800").pack(anchor="w", pady=(10, 6))
 
         bottom = ttk.Frame(outer)

@@ -292,13 +292,12 @@ class App(tk.Tk):
                 MappingEditor(self)
             else:
                 messagebox.showinfo(
-                    "Übungen zuordnen",
-                    "Bitte zuerst ein oder mehrere Trainings in der Liste markieren. "
-                    "Danach lädt das Programm ihre Übungen direkt aus Speediance."
+                    self.tr("Übungen zuordnen"),
+                    self.tr("Bitte zuerst ein oder mehrere Trainings in der Liste markieren. Danach lädt das Programm ihre Übungen direkt aus Speediance.")
                 )
             return
         if self.client is None:
-            messagebox.showinfo(self.tr("Speediance-Anmeldung"), "Bitte zuerst anmelden.")
+            messagebox.showinfo(self.tr("Speediance-Anmeldung"), self.tr("Bitte zuerst anmelden."))
             return
         selected = [self.sessions[i] for i in indices]
 
@@ -314,26 +313,22 @@ class App(tk.Tk):
                     logger.warning("Could not save detected exercise names (%s)",
                                    type(exc).__name__)
                     messagebox.showwarning(
-                        "Übungsnamen", "Die Übungen wurden geladen, können aber "
-                        "möglicherweise nicht dauerhaft gespeichert werden."
+                        self.tr("Übungsnamen"), self.tr("Die Übungen wurden geladen, können aber möglicherweise nicht dauerhaft gespeichert werden.")
                     )
-                self.status.set("%d Übungen aus %d gewählten Training(s) geladen." %
+                self.status.set(self.tr("%d Übungen aus %d gewählten Training(s) geladen.") %
                                 (len(names), len(selected)))
                 MappingEditor(self, names=names)
                 if failures:
                     messagebox.showwarning(
-                        "Unvollständige Übungsliste",
-                        "%d gewählte Trainingseinheit(en) konnten nicht vollständig "
-                        "gelesen werden. Details stehen im Diagnoseprotokoll." % failures,
+                        self.tr("Unvollständige Übungsliste"),
+                        self.tr("%d gewählte Trainingseinheit(en) konnten nicht vollständig gelesen werden. Details stehen im Diagnoseprotokoll.") % failures,
                         parent=self,
                     )
             else:
-                self.status.set("Für die markierten Trainings wurden keine Übungen geladen.")
+                self.status.set(self.tr("Für die markierten Trainings wurden keine Übungen geladen."))
                 messagebox.showwarning(
-                    "Keine Übungen abrufbar",
-                    "Speediance hat für die markierten Trainings keine Übungen geliefert. "
-                    "Prüfe das Diagnoseprotokoll. Der Zuordnungsdialog wird deshalb "
-                    "nicht leer geöffnet."
+                    self.tr("Keine Übungen abrufbar"),
+                    self.tr("Speediance hat für die markierten Trainings keine Übungen geliefert. Prüfe das Diagnoseprotokoll. Der Zuordnungsdialog wird deshalb nicht leer geöffnet.")
                 )
 
         self.run_job(work, done)
@@ -368,11 +363,11 @@ class App(tk.Tk):
                 if kind == "ok":
                     callback(value)
                 else:
-                    self.status.set("Fehler. Diagnoseprotokoll kann gespeichert werden.")
+                    self.status.set(self.tr("Fehler. Diagnoseprotokoll kann gespeichert werden."))
                     if self.login_status.get().startswith("● Anmeldung läuft"):
-                        self.login_status.set("● Nicht angemeldet – Anmeldung fehlgeschlagen")
+                        self.login_status.set(self.tr("● Nicht angemeldet – Anmeldung fehlgeschlagen"))
                         self.login_status_label.configure(foreground="#9a3412")
-                    messagebox.showerror(self.tr("Fehler"), callback)
+                    messagebox.showerror(self.tr("Fehler"), self.tr(callback))
         except queue.Empty:
             pass
         self.after(100, self.poll)
@@ -381,15 +376,13 @@ class App(tk.Tk):
         email = self.email.get().strip()
         password = self.password.get()
         if not email or not password:
-            messagebox.showinfo(self.tr("Anmeldung"), "Bitte E-Mail und Passwort eingeben.")
+            messagebox.showinfo(self.tr("Anmeldung"), self.tr("Bitte E-Mail und Passwort eingeben."))
             return
         region = self.region.get()
         login_slot = self.login_client_type.get()
         if login_slot == "phone" and not messagebox.askyesno(
-            "Achtung: iOS-App wird abgemeldet",
-            "Der Typ 'phone' verwendet den gleichen Speediance-Sitzungsplatz wie "
-            "deine iOS-App. Das kann deine iOS-App sofort abmelden. "
-            "Trotzdem mit 'phone' anmelden?"
+            self.tr("Achtung: iOS-App wird abgemeldet"),
+            self.tr("Der Typ 'phone' verwendet den gleichen Speediance-Sitzungsplatz wie deine iOS-App. Das kann deine iOS-App sofort abmelden. Trotzdem mit 'phone' anmelden?")
         ):
             return
 
@@ -400,7 +393,7 @@ class App(tk.Tk):
 
         def done(client):
             self.client = client
-            self.login_status.set("● Angemeldet (Speediance, %s)" % login_slot)
+            self.login_status.set(self.tr("● Angemeldet (Speediance, %s)") % login_slot)
             self.login_status_label.configure(foreground="#23754a")
             try:
                 save_login_client_type(login_slot)
@@ -412,8 +405,8 @@ class App(tk.Tk):
                 except Exception as exc:
                     logger.warning("Windows credential save failed: %s", type(exc).__name__)
                     messagebox.showwarning(
-                        "Anmeldedaten",
-                        "Login erfolgreich, aber Speichern im Windows-Anmeldeinformationsmanager fehlgeschlagen."
+                        self.tr("Anmeldedaten"),
+                        self.tr("Login erfolgreich, aber Speichern im Windows-Anmeldeinformationsmanager fehlgeschlagen.")
                     )
             else:
                 try:
@@ -421,16 +414,16 @@ class App(tk.Tk):
                 except Exception as exc:
                     logger.warning("Windows credential deletion failed: %s", type(exc).__name__)
             self.password.set("")
-            self.status.set("Angemeldet. Jetzt Trainings laden.")
+            self.status.set(self.tr("Angemeldet. Jetzt Trainings laden."))
 
         self.client = None
-        self.login_status.set("● Anmeldung läuft …")
-        self.status.set("Anmeldung wird geprüft …")
+        self.login_status.set(self.tr("● Anmeldung läuft …"))
+        self.status.set(self.tr("Anmeldung wird geprüft …"))
         self.run_job(job, done)
 
     def fetch(self):
         if self.client is None:
-            messagebox.showinfo(self.tr("Anmeldung"), "Bitte zuerst anmelden.")
+            messagebox.showinfo(self.tr("Anmeldung"), self.tr("Bitte zuerst anmelden."))
             return
         try:
             start = date.fromisoformat(self.from_date.get())
@@ -438,7 +431,7 @@ class App(tk.Tk):
             if end < start or (end - start).days > 366 * 3:
                 raise ValueError()
         except ValueError:
-            messagebox.showerror(self.tr("Datum"), "Bitte gültigen Zeitraum bis zu 3 Jahren wählen.")
+            messagebox.showerror(self.tr("Datum"), self.tr("Bitte gültigen Zeitraum bis zu 3 Jahren wählen."))
             return
 
         def done(items):
@@ -452,7 +445,7 @@ class App(tk.Tk):
             recovered = getattr(self.client, "calendar_fallback_added", 0)
             other_device = getattr(self.client, "calendar_other_device_added", 0)
             self.status.set(
-                "%d abgeschlossene Workouts geladen (frühere API: +%d; anderer Gerätetyp: +%d)." %
+                self.tr("%d abgeschlossene Workouts geladen (frühere API: +%d; anderer Gerätetyp: +%d).") %
                 (len(items), recovered, other_device)
             )
 
@@ -461,7 +454,7 @@ class App(tk.Tk):
     def export(self):
         indices = [int(i) for i in self.table.selection()]
         if not indices:
-            messagebox.showinfo(self.tr("Auswahl"), "Bitte mindestens ein Workout markieren.")
+            messagebox.showinfo(self.tr("Auswahl"), self.tr("Bitte mindestens ein Workout markieren."))
             return
         folder = self.export_dir.get()
         if not folder or not Path(folder).is_dir():
@@ -499,16 +492,13 @@ class App(tk.Tk):
 
         def done(result):
             successes, failures, unknown_count, missing_details = result
-            self.status.set("%d exportiert, %d Fehler, %d ohne Garmin-Zuordnung." %
+            self.status.set(self.tr("%d exportiert, %d Fehler, %d ohne Garmin-Zuordnung.") %
                             (len(successes), failures, unknown_count))
-            message = "%d FIT-Dateien gespeichert. Fehler: %d" % (len(successes), failures)
+            message = self.tr("%d FIT-Dateien gespeichert. Fehler: %d") % (len(successes), failures)
             if unknown_count:
-                message += ("\n%d Übungsnamen haben keine eindeutige Garmin-Zuordnung. "
-                            "Die Originalnamen sind lokal für die Zuordnung gespeichert. "
-                            "Klicke auf 'Übungen zuordnen…' und exportiere erneut.") % unknown_count
+                message += self.tr("\n%d Übungsnamen haben keine eindeutige Garmin-Zuordnung. Die Originalnamen sind lokal für die Zuordnung gespeichert. Klicke auf 'Übungen zuordnen…' und exportiere erneut.") % unknown_count
             if missing_details:
-                message += ("\n%d Trainingseinheiten ohne Speediance-Satzdaten "
-                            "wurden NICHT als leere FIT-Aktivitäten exportiert.") % missing_details
+                message += self.tr("\n%d Trainingseinheiten ohne Speediance-Satzdaten wurden NICHT als leere FIT-Aktivitäten exportiert.") % missing_details
             messagebox.showinfo(self.tr("Export"), message)
 
         self.run_job(job, done)
@@ -516,12 +506,12 @@ class App(tk.Tk):
     def save_log(self):
         target = filedialog.asksaveasfilename(
             defaultextension=".txt", initialfile="speediance-diagnose.txt",
-            filetypes=[("Textdatei", "*.txt")]
+            filetypes=[(self.tr("Textdatei"), "*.txt")]
         )
         if target:
             handler.flush()
             shutil.copyfile(LOG, target)
-            messagebox.showinfo(self.tr("Diagnose"), "Gespeichert. Bitte vor Weitergabe selbst prüfen.")
+            messagebox.showinfo(self.tr("Diagnose"), self.tr("Gespeichert. Bitte vor Weitergabe selbst prüfen."))
 
     def open_log_dir(self):
         try:

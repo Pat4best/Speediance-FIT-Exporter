@@ -1,4 +1,4 @@
-# Speediance FIT Exporter (Beta 0.1.11)
+# Speediance FIT Exporter (Beta 0.1.12)
 
 Lokale Windows-10/11-Anwendung zum Abruf abgeschlossener Speediance-Trainingseinheiten aus dem eigenen Account und zum Export als Garmin-FIT-Aktivitäten. Die Speediance-API ist **inoffiziell**; der Login ist ohne echten Testaccount nicht verifiziert.
 
@@ -111,6 +111,17 @@ Im **Übungen zuordnen…**-Fenster befindet sich jetzt oben rechts eine separat
 - **English:** Zeigt die **englischen Originalnamen** des Garmin-FIT-Profils.
 - **Suche:** Unabhängig von der Anzeigesprache werden sowohl deutsche als auch englische Begriffe gefunden, z. B. `Langhantel` und `barbell` oder `Kreuzheben` und `deadlift`. Beide Sprachen verwenden unveränderte Garmin-Kategorie- und Unterkategorie-IDs. Alle 1.838 vorhandenen Garmin-Enumwerte bleiben erhalten und erscheinen nicht doppelt.
 - **Wichtig:** Nicht jede der 1.838 Übungen hat eine redaktionell geprüfte deutsche Übersetzung. Unbekannte Fachbegriffe bleiben bewusst im englischen Original; die englische Bezeichnung dient zur Gegenprüfung. Das beeinflusst nicht die exportierten FIT-Codes.
+
+## 0.1.12 – Ein Klick für die Übungszuordnung
+
+**Vereinfachter Ablauf:** Links eine Speediance-Übung markieren, rechts im Garmin-Katalog die passende Übung anklicken und anschließend den neuen Button **„← Zuordnen“** direkt unter der rechten Liste drücken. Die Zuordnung wird **sofort lokal gespeichert** und erscheint unmittelbar in der linken Spalte **„Garmin-Zuordnung“**. Ein zusätzlicher Speicherdialog ist nicht erforderlich; so lassen sich mehrere Übungen nacheinander schneller zuordnen.
+
+- Der Button wird erst aktiv, wenn links eine Speediance-Übung und rechts ein Garmin-Treffer ausgewählt wurden.
+- Beim Wechsel auf eine andere Speediance-Übung wird die vorherige, noch nicht gespeicherte Garmin-Auswahl bewusst zurückgesetzt – das verhindert versehentliche Fehlzuordnungen.
+- **Zuordnung entfernen** bleibt erhalten, um eine falsch gesetzte Zuordnung zurückzusetzen.
+- Die technischen FIT-Felder **Kategorie / ID** werden weiter automatisch gesetzt; die manuelle Eingabe bleibt nur im Expertenmodus möglich.
+- **Deutsch / English** werden für Button, Hinweise und Bestätigung unterstützt. Eine offene Zuordnung bleibt beim Wechsel der Katalogsprache erhalten.
+- Die gespeicherten Zuordnungen werden beim nächsten FIT-Export berücksichtigt. Bereits in Garmin Connect importierte Aktivitäten ändern sich dadurch nicht.
 
 ## Windows-Installer
 

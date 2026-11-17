@@ -11,7 +11,7 @@ from urllib.parse import quote
 
 from heart_rate import graph_details, graph_shape, valid_bpm
 from hr_sensor import find_hr_sensor
-from weight_handling import set_weight
+from weight_handling import measured_set_weight
 from activity_time import activity_bounds
 
 HOSTS = {"EU": "euapi.speediance.com", "Global": "api2.speediance.com"}
@@ -396,13 +396,30 @@ class Client:
             self.logger.warning("No exercise details after trying %d endpoints", len(routes))
             raise APIError("Speediance hat für diese Trainingseinheit keine Übungsdetails geliefert")
         exercises = []
+        weight_sources = {}
+        variable_sets = 0
+        unknown_weight_fields = set()
         for ex in raw:
             sets = []
             for s in (ex.get("finishedReps") or []):
                 detail = s.get("trainingInfoDetail") or {}
                 if not recording_uuid and isinstance(detail.get("uuid"), str):
                     recording_uuid = detail["uuid"]
-                weight, already_total = set_weight(detail, s)
+                weight, already_total, weight_diagnostic = measured_set_weight(detail, s)
+                source = weight_diagnostic["source"]
+                weight_sources[source] = weight_sources.get(source, 0) + 1
+                variable_sets += int(weight_diagnostic["contains_changes"])
+                # Available fields, never their contents, may help distinguish
+                # recorded load from a plan setting if the reported load is wrong.
+                candidate_fields = {
+                    "weight", "actualWeight", "actualWeights", "realWeight",
+                    "realWeights", "finishedWeight", "usedWeight",
+                    "targetWeight", "targetWeights", "setWeight",
+                    "startWeight", "endWeight", "resistance", "load",
+                    "leftWeight", "rightWeight",
+                }
+                unknown_weight_fields.update(candidate_fields.intersection(s))
+                unknown_weight_fields.update(candidate_fields.intersection(detail))
                 sets.append({
                     "reps": s.get("finishedCount") or 0,
                     "seconds": s.get("time") or 0,
@@ -412,6 +429,17 @@ class Client:
             exercises.append({"name": ex.get("actionLibraryName") or "Übung", "sets": sets})
         count = sum(len(e["sets"]) for e in exercises)
         self.logger.info("Loaded %d exercises and %d sets", len(exercises), count)
+        self.logger.info(
+            "Weight source of completed sets: %s; variable_recorded_sets=%d; "
+            "other_recognized_weight_fields=%s",
+            weight_sources, variable_sets, sorted(unknown_weight_fields),
+        )
+        if weight_sources.get("generic_telemetry"):
+            self.logger.warning(
+                "Weight provenance: %d sets use generic 'weights' data "
+                "without independently verified per-cable measurements",
+                weight_sources["generic_telemetry"],
+            )
         if not count:
             raise APIError("Speediance hat für dieses Training keine Sätze geliefert")
         # A per-set maximum is a real measurement. It can form a true

@@ -59,12 +59,43 @@ def _series(raw):
     return result
 
 
-def set_weight(detail, raw_set=None):
-    """Return (weight_in_account_units, already_total_or_unilateral).
 
-    When Speediance provides per-side telemetry, it is more reliable than
-    'weights' (which can be derived force telemetry). Sum max-left+max-right
-    for dual cables, do NOT apply an additional name-based x2.
+def _representative_recorded_load(values):
+    """Most frequently recorded *positive* resistance; latest wins a tie.
+
+    The previous max() incorrectly treated an initial higher plan setting
+    (e.g. 26 kg) as the executed load even after lowering it (e.g. 20 kg).
+    Zero after disengaging is not an executed resistance. Speediance records
+    arrays per rep and sometimes contains setup values before lifting.
+    """
+    positives = [v for v in values if v > 0]
+    if not positives:
+        return 0.0
+    # Ignore small recording noise; allow 0.1 kg precision.
+    readings = [round(v, 1) for v in positives]
+    counts = {reading: readings.count(reading) for reading in set(readings)}
+    highest = max(counts.values())
+    return next(v for v in reversed(readings) if counts[v] == highest)
+
+
+def _recorded_status(left, right, fallback, source):
+    """Shape diagnostics only. Never log workout values or user metadata."""
+    active = left + right if source in ("both_sides", "single_side") else fallback
+    positives = [round(v, 1) for v in active if v > 0]
+    return {
+        "source": source,
+        "readings": len(positives),
+        "different_loads": len(set(positives)),
+        "contains_changes": len(set(positives)) > 1,
+    }
+
+
+def measured_set_weight(detail, raw_set=None):
+    """Return (resistance, already_total, shape) for recorded strength sets.
+
+    Per-side arrays in trainingInfoDetail always take precedence over generic
+    force/weight telemetry, and always reflect the particular completed set.
+    No prescribed/template weights are ever read here.
     """
     detail = detail if isinstance(detail, dict) else {}
     raw_set = raw_set if isinstance(raw_set, dict) else {}
@@ -74,13 +105,27 @@ def set_weight(detail, raw_set=None):
         side = int(raw_set.get("leftRight", detail.get("leftRight", 0)) or 0)
     except (ValueError, TypeError):
         side = 0
-    if side == 1 and left:
-        return max(left), True
-    if side == 2 and right:
-        return max(right), True
-    if left and right:
-        return max(left) + max(right), True
-    if left or right:
-        return max(left or right), side in (1, 2)
     fallback = _series(detail.get("weights"))
-    return (max(fallback) if fallback else 0), False
+    if side == 1 and left:
+        return (_representative_recorded_load(left), True,
+                _recorded_status(left, [], fallback, "single_side"))
+    if side == 2 and right:
+        return (_representative_recorded_load(right), True,
+                _recorded_status([], right, fallback, "single_side"))
+    if left and right:
+        return (_representative_recorded_load(left) +
+                _representative_recorded_load(right), True,
+                _recorded_status(left, right, fallback, "both_sides"))
+    if left or right:
+        return (_representative_recorded_load(left or right), side in (1, 2),
+                _recorded_status(left or right, [], fallback, "single_side"))
+    if fallback:
+        return (_representative_recorded_load(fallback), False,
+                _recorded_status([], [], fallback, "generic_telemetry"))
+    return 0.0, False, _recorded_status([], [], [], "missing")
+
+
+def set_weight(detail, raw_set=None):
+    """Backward compatible result of the recorded-set resistance selector."""
+    load, already_total, _ = measured_set_weight(detail, raw_set)
+    return load, already_total

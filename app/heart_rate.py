@@ -37,6 +37,67 @@ def _unwrap_series(data):
     return [], "unrecognized"
 
 
+def _entry_heart_rate(entry):
+    """Extract measured BPM from common and compound telemetry key names.
+
+    Never mistake max/avg/target heart-rate summaries or timestamps for an
+    actual sample. Honor explicit value-type keys first.
+    """
+    keys = ("heartRate", "heart", "heart_rate", "hr", "bpm", "value", "rate",
+            "heartRateValue", "realHeartRate", "currentHeartRate", "heartRateBpm")
+    for key in keys:
+        if key in entry and valid_bpm(entry[key]) is not None:
+            return entry[key]
+    for key, value in entry.items():
+        if not isinstance(key, str):
+            continue
+        normalized = "".join(ch for ch in key.casefold() if ch.isalnum())
+        if any(term in normalized for term in ("time", "max", "min", "avg", "average",
+                                                "target", "zone", "device", "serial",
+                                                "timestamp", "duration", "count")):
+            continue
+        if any(term in normalized for term in ("heartrate", "pulse", "bpm")):
+            if valid_bpm(value) is not None:
+                return value
+    return None
+
+
+def graph_shape(data):
+    """Sanitized shape-only report to debug missing samples without HR values.
+
+    Lists of arbitrary values could contain identifiers. We report just type
+    and safe recognized field labels, NEVER example values or raw keys.
+    """
+    series, fmt = _unwrap_series(data)
+    types = {}
+    known = set()
+    for item in series[:30]:
+        name = type(item).__name__
+        types[name] = types.get(name, 0) + 1
+        if isinstance(item, dict):
+            for key in item:
+                if isinstance(key, str):
+                    n = "".join(c for c in key.casefold() if c.isalnum())
+                    if n in {
+                        "heartrate", "heartratevalue", "heart", "heartbeats",
+                        "heartratebpm", "currentheartrate", "realheartrate",
+                        "pulse", "bpm", "value", "rate", "time", "timestamp",
+                        "elapsedseconds", "elapsed", "seconds", "second",
+                        "maxheartrate", "avgheartrate", "minheartrate",
+                    }:
+                        known.add(n)
+    return {
+        "format": fmt,
+        "items": len(series),
+        "sample_types": types,
+        "known_fields": sorted(known),
+        "dict_field_count": max(
+            (len(item) for item in series[:30] if isinstance(item, dict)),
+            default=0,
+        ),
+    }
+
+
 def graph_details(data, duration_seconds=None):
     """Return samples, true summary values, source format and timeline provenance.
 
@@ -56,9 +117,9 @@ def graph_details(data, duration_seconds=None):
     count = len(series)
     for index, entry in enumerate(series):
         if isinstance(entry, dict):
-            raw = next((entry.get(key) for key in (
-                "heartRate", "heart", "heart_rate", "hr", "bpm", "value", "rate"
-            ) if key in entry), None)
+            # Speediance variants also use keys such as heartRateValue or
+            # realHeartRate. Avoid numeric timing/ID/maximum fields.
+            raw = _entry_heart_rate(entry)
             elapsed = next((entry[key] for key in (
                 "elapsedSeconds", "elapsed", "seconds", "time", "second"
             ) if key in entry), None)

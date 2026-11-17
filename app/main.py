@@ -22,7 +22,7 @@ from preferences import load_language, save_language
 from i18n import translate
 
 APP = "Speediance FIT Exporter"
-VERSION = "0.1.15-beta"
+VERSION = "0.1.16-beta"
 DATA = Path(os.environ.get("LOCALAPPDATA", Path.home())) / "SpeedianceFITExporter"
 DATA.mkdir(parents=True, exist_ok=True)
 LOG = DATA / "diagnose.log"

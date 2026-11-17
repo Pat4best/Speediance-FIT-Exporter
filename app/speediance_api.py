@@ -45,7 +45,7 @@ class APIError(Exception):
     pass
 
 
-_SAFE_COMPLETED_RECORD_ID = re.compile(r"[A-Za-z0-9_.-]{1,120}\\Z")
+_SAFE_COMPLETED_RECORD_ID = re.compile(r"[A-Za-z0-9_.-]{1,120}\Z")
 
 
 def completed_record_reference(record):

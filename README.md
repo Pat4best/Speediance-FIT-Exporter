@@ -1,4 +1,4 @@
-# Speediance FIT Exporter (Beta 0.1.14)
+# Speediance FIT Exporter (Beta 0.1.15)
 
 Lokale Windows-10/11-Anwendung zum Abruf abgeschlossener Speediance-Trainingseinheiten aus dem eigenen Account und zum Export als Garmin-FIT-Aktivitäten. Die Speediance-API ist **inoffiziell**; der Login ist ohne echten Testaccount nicht verifiziert.
 
@@ -149,6 +149,14 @@ https://github.com/labatt/speediance-mcp
 **Deutsch / English:** Die Sensor-Eingabe, Statusanzeige und Zeitachsenwarnung sind zweisprachig.
 
 Zum Überprüfen nach dem Upgrade das Training vom 16.11. erneut exportieren und die FIT-Datei in Garmin Connect importieren. Bereits importierte Aktivitäten werden nicht aktualisiert und können beim Import dupliziert werden.
+
+## 0.1.15 – HF-Verlauf: Diagnose der Speediance-Messpunkte, manuellen Sensor entfernt
+
+Das reale Diagnoseprotokoll der Trainingseinheit vom 16.11.2026 zeigte **942 `heartRates`-Einträge**, aber **0 erkannte Einzelmessungen**. Durchschnitts-/Maximalpuls aus der Speediance-Zusammenfassung wurden dagegen korrekt exportiert. Deshalb wird die Dateninterpretation nun robuster: Neben `heartRate` werden beispielsweise `heartRateValue`, `realHeartRate`, `currentHeartRate` und andere eindeutig bezeichnete Messwertfelder erkannt. Zeit-, Maximum-, Durchschnitts-, Ziel- und Gerätefelder werden **nicht** als Messpunkte behandelt. Ist weiterhin kein verwertbarer Puls vorhanden, notiert das lokale Protokoll die **Elementtypen** und eine streng begrenzte Menge bekannter Feldnamen und Zählwerte – niemals Pulszahlen, UUIDs, Geräte-IDs oder beliebige unbekannte API-Feldnamen. Das dient der nächsten gezielten Analyse der Speediance-Antwortstruktur.
+
+Das bisherige Eingabefeld **„HF-Sensor (optional)“** wurde **vollständig entfernt**, ebenso die Speicherung neuer manueller Angaben. Die bereits lokal gespeicherte Einstellung `hr_sensor_name` wird nicht mehr gelesen oder verwendet. Falls die Speediance-API selbst ein bekanntes Herzfrequenz-Gerätemodell übermittelt, darf es weiterhin automatisch in die FIT-`device_info`-Nachricht übernommen werden. Garmin Connect entscheidet selbst, ob eine solche Metadaten-Nachricht bei manuell importierten Aktivitäten angezeigt wird.
+
+**Hinweis:** Eine bei Garmin Connect vorhandene FIT-Datei mit einer echten HF-Kurve ist ein wertvoller technischer Vergleich für die `record`- und `device_info`-Felder. Die API gibt noch keinen Zugriff auf solche Referenzdateien; diese müssen als tatsächliche `.fit`-Datei im Chat angehängt werden.
 
 ## Windows-Installer
 

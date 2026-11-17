@@ -23,7 +23,7 @@ from preferences import load_language, save_language
 from i18n import translate
 
 APP = "Speediance FIT Exporter"
-VERSION = "0.1.24-beta"
+VERSION = "0.1.25-beta"
 DATA = Path(os.environ.get("LOCALAPPDATA", Path.home())) / "SpeedianceFITExporter"
 DATA.mkdir(parents=True, exist_ok=True)
 LOG = DATA / "diagnose.log"
@@ -230,6 +230,11 @@ class App(tk.Tk):
         self.garmin_merge_button.pack(side="left", padx=(10, 0))
         diagnostics = ttk.Frame(footer)
         diagnostics.pack(fill="x", pady=(4, 0))
+        self.inspect_button = ttk.Button(
+            diagnostics, text=self.tr("Speediance-Datensatz prüfen…"),
+            command=self.inspect_selected_workout,
+        )
+        self.inspect_button.pack(side="left", padx=(0, 8))
         ttk.Button(diagnostics, text=self.tr("Diagnose anzeigen…"),
                    command=self.show_log).pack(side="left")
         ttk.Button(diagnostics, text=self.tr("Diagnoseprotokoll speichern…"),
@@ -351,7 +356,7 @@ class App(tk.Tk):
         self.status.set(self.tr("Arbeite …"))
         for button in (self.login_button, self.fetch_button,
                        self.export_button, self.mapping_button,
-                       self.garmin_merge_button):
+                       self.garmin_merge_button, self.inspect_button):
             button.state(["disabled"])
 
         def worker():
@@ -382,7 +387,7 @@ class App(tk.Tk):
                 self.busy = False
                 for button in (self.login_button, self.fetch_button,
                                self.export_button, self.mapping_button,
-                               self.garmin_merge_button):
+                               self.garmin_merge_button, self.inspect_button):
                     button.state(["!disabled"])
                 if kind == "ok":
                     callback(value)
@@ -481,6 +486,32 @@ class App(tk.Tk):
             )
 
         self.run_job(lambda: self.client.list_workouts(start, end), done)
+
+    def inspect_selected_workout(self):
+        """Inspect schema only for the selected Speediance session."""
+        if self.busy:
+            return
+        if self.client is None:
+            messagebox.showinfo(self.tr("Speediance-Anmeldung"),
+                                self.tr("Bitte zuerst anmelden."))
+            return
+        indices = [int(i) for i in self.table.selection()]
+        if len(indices) != 1:
+            messagebox.showinfo(
+                self.tr("Eine Trainingseinheit auswählen"),
+                self.tr("Bitte genau eine Speediance-Trainingseinheit markieren."),
+            )
+            return
+        workout = self.sessions[indices[0]]
+
+        def done(summary):
+            self.status.set(
+                self.tr("API-Diagnose abgeschlossen: %d Detail-Abfragen, %d Antworten mit Sätzen.") %
+                (summary["checked"], summary["responses_with_completed_sets"])
+            )
+            self.show_log()
+
+        self.run_job(lambda: self.client.diagnose_workout(workout), done)
 
     def open_garmin_merge(self):
         """Optional read-only Garmin connection and explicit local merge."""

@@ -25,6 +25,7 @@ LOGIN_CLIENT_TYPES = {
     "phone": ("SOFTWARE", "41000"),
 }
 DEFAULT_LOGIN_CLIENT_TYPE = "bike"
+READ_VERSIONS = ("41000", "40304")  # Current and previously working calendar API version
 
 
 class APIError(Exception):
@@ -42,8 +43,9 @@ class Client:
         if login_client_type not in LOGIN_CLIENT_TYPES:
             raise ValueError("Unbekannter Speediance-Anmeldetyp")
         self.login_client_type = login_client_type
+        self.calendar_fallback_added = 0
 
-    def request(self, path, payload=None, allow_error=False, login_as=None):
+    def request(self, path, payload=None, allow_error=False, login_as=None, read_version=None):
         method = "POST" if payload is not None else "GET"
         data = json.dumps(payload).encode("utf-8") if payload is not None else None
         # Only login endpoints use a dedicated client slot; regular
@@ -54,6 +56,10 @@ class Client:
             LOGIN_CLIENT_TYPES[login_as] if login_as
             else ("SOFTWARE", "41000")
         )
+        if read_version is not None:
+            if method != "GET" or login_as is not None or read_version not in READ_VERSIONS:
+                raise ValueError("API-Versionswechsel nur für lesende Kalenderabfragen zulässig")
+            version_code = read_version
         headers = {
             "Content-Type": "application/json",
             "User-Agent": "Dart/3.9 (dart:io)",
@@ -125,39 +131,100 @@ class Client:
         self.logger.info("Login successful")
 
     def list_workouts(self, start, end):
-        items = []
+        """Merge read-only calendar results across two known app version headers.
+
+        The old app (40304) displayed sessions later absent with 41000.
+        Use the existing Bike/Nano login token; NEVER log into the phone slot
+        to retrieve fallback data. Deduplicate by Speediance training ID.
+        """
+        if end < start:
+            raise ValueError("Ungültiger Zeitraum")
+        items = {}
+        self.calendar_fallback_added = 0
         year, month = start.year, start.month
         while (year, month) <= (end.year, end.month):
             path = "/api/app/v5/trainingCalendar/monthNew?date=%d-%02d&selectedDeviceType=%d" % (
                 year, month, self.device
             )
-            days = self.request(path) or []
-            if not isinstance(days, list):
-                raise APIError("Kalenderantwort hat unerwartetes Format")
-            for day in days:
+            valid_responses = 0
+            for version in READ_VERSIONS:
                 try:
-                    day_date = date.fromisoformat(day["date"])
-                except (ValueError, KeyError, TypeError):
+                    days = self.request(path, read_version=version)
+                except APIError:
+                    self.logger.warning("Calendar read failed, version=%s", version)
                     continue
-                if not start <= day_date <= end:
+                if days is None:
+                    self.logger.warning("Calendar returned no data, version=%s", version)
                     continue
-                for plan in (day.get("trainingPlanList") or []):
-                    if plan.get("isFinish") != 1 or not plan.get("trainingId"):
+                if not isinstance(days, list):
+                    self.logger.warning("Unexpected calendar data structure, version=%s", version)
+                    continue
+                valid_responses += 1
+                added = 0
+                skipped = 0
+                for day in days:
+                    if not isinstance(day, dict):
+                        skipped += 1
                         continue
-                    items.append({
-                        "training_id": int(plan["trainingId"]),
-                        "day": day_date.isoformat(),
-                        "title": plan.get("title") or "Training",
-                        "finished_at": plan.get("finishTime"),
-                        "duration_min": plan.get("durationMinute") or 0,
-                        "calories": plan.get("calorie") or 0,
-                        "type": plan.get("type") or 0,
-                        "unit": self.unit,
-                    })
+                    try:
+                        # Some API responses include an ISO time after the date.
+                        day_date = date.fromisoformat(str(day["date"])[:10])
+                    except (ValueError, KeyError, TypeError):
+                        skipped += 1
+                        continue
+                    if not start <= day_date <= end:
+                        continue
+                    plans = day.get("trainingPlanList") or []
+                    if not isinstance(plans, list):
+                        skipped += 1
+                        continue
+                    for plan in plans:
+                        if not isinstance(plan, dict):
+                            skipped += 1
+                            continue
+                        # Calendar can also contain scheduled, unfinished plans.
+                        if plan.get("isFinish") not in (1, True, "1", "true", "True"):
+                            skipped += 1
+                            continue
+                        try:
+                            training_id = int(plan["trainingId"])
+                            if training_id <= 0:
+                                skipped += 1
+                                continue
+                        except (ValueError, TypeError, KeyError):
+                            skipped += 1
+                            continue
+                        if training_id in items:
+                            continue
+                        items[training_id] = {
+                            "training_id": training_id,
+                            "day": day_date.isoformat(),
+                            "title": plan.get("title") or "Training",
+                            "finished_at": plan.get("finishTime"),
+                            "duration_min": plan.get("durationMinute") or 0,
+                            "calories": plan.get("calorie") or 0,
+                            "type": plan.get("type") or 0,
+                            "unit": self.unit,
+                        }
+                        added += 1
+                        if version == "40304":
+                            self.calendar_fallback_added += 1
+                # Aggregates only: no training titles, IDs or personal data in logs.
+                self.logger.info(
+                    "Calendar %04d-%02d version=%s days=%d added=%d skipped=%d",
+                    year, month, version, len(days), added, skipped
+                )
+            if not valid_responses:
+                raise APIError("Speediance-Kalender konnte für %04d-%02d nicht geladen werden" %
+                               (year, month))
             year, month = (year + 1, 1) if month == 12 else (year, month + 1)
-        items.sort(key=lambda w: (w["day"], w["finished_at"] or "", w["training_id"]), reverse=True)
-        self.logger.info("Loaded %d completed workouts", len(items))
-        return items
+        result = list(items.values())
+        result.sort(key=lambda w: (
+            w["day"], str(w["finished_at"] or ""), w["training_id"]
+        ), reverse=True)
+        self.logger.info("Loaded %d completed workouts (%d recovered via legacy calendar)",
+                         len(result), self.calendar_fallback_added)
+        return result
 
     def detail(self, workout):
         raw = None

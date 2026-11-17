@@ -9,7 +9,7 @@ import shutil
 import sys
 import threading
 import tkinter as tk
-from tkinter import filedialog, messagebox, ttk
+from tkinter import filedialog, messagebox, ttk, scrolledtext
 
 from speediance_api import Client
 from fitwriter import write_fit
@@ -18,9 +18,11 @@ from windows_credentials import load_login, save_login, delete_login
 from preferences import export_folder, save_export_folder, saved_mappings, remember_names, load_login_client_type, save_login_client_type
 from mapping_editor import MappingEditor
 from exercise_discovery import discover_names
+from preferences import load_language, save_language
+from i18n import translate
 
 APP = "Speediance FIT Exporter"
-VERSION = "0.1.7-beta"
+VERSION = "0.1.8-beta"
 DATA = Path(os.environ.get("LOCALAPPDATA", Path.home())) / "SpeedianceFITExporter"
 DATA.mkdir(parents=True, exist_ok=True)
 LOG = DATA / "diagnose.log"
@@ -56,12 +58,62 @@ class App(tk.Tk):
         self.sessions = []
         self.events = queue.Queue()
         self.busy = False
+        self.language = tk.StringVar(value=load_language())
+        self.language_label = tk.StringVar(
+            value="Deutsch" if self.language.get() == "de" else "English"
+        )
         self.save_login_var = tk.BooleanVar(value=False)
         self.login_client_type = tk.StringVar(value=load_login_client_type())
         self.export_dir = tk.StringVar(value=export_folder())
         self.build_ui()
         self._load_remembered_login()
         self.after(100, self.poll)
+
+    def tr(self, phrase):
+        return translate(self.language.get(), phrase)
+
+    def change_language(self, event=None):
+        selected = "en" if self.language_label.get() == "English" else "de"
+        if self.busy:
+            self.language_label.set("Deutsch" if self.language.get() == "de" else "English")
+            return
+        if selected == self.language.get():
+            return
+        previous = {
+            "email": self.email.get(), "password": self.password.get(),
+            "region": self.region.get(), "start": self.from_date.get(),
+            "end": self.to_date.get(), "selected": list(self.table.selection()),
+        }
+        try:
+            save_language(selected)
+        except OSError:
+            messagebox.showerror("Error", "Could not save language preference.")
+            return
+        self.language.set(selected)
+        # Rebuild labels, menus and buttons while preserving the authenticated
+        # API client, loaded workouts, selected rows, dates and form fields.
+        for widget in self.winfo_children():
+            widget.destroy()
+        self.build_ui()
+        self.email.set(previous["email"])
+        self.password.set(previous["password"])
+        self.region.set(previous["region"])
+        self.from_date.set(previous["start"])
+        self.to_date.set(previous["end"])
+        for i, item in enumerate(self.sessions):
+            self.table.insert("", "end", iid=str(i), values=(
+                item["day"], item["title"], item["duration_min"], item["calories"]
+            ))
+        for row_id in previous["selected"]:
+            if self.table.exists(row_id):
+                self.table.selection_add(row_id)
+        if self.client is not None:
+            slot = self.client.login_client_type
+            self.login_status.set(self.tr("● Angemeldet (Speediance, %s)") % slot)
+            self.login_status_label.configure(foreground="#23754a")
+            self.status.set(self.tr("%d abgeschlossene Workouts geladen.") % len(self.sessions))
+        else:
+            self.login_status.set(self.tr("● Nicht angemeldet"))
 
     def build_ui(self):
         root = ttk.Frame(self, padding=10)
@@ -72,8 +124,18 @@ class App(tk.Tk):
         footer.pack(side="bottom", fill="x")
         body = ttk.Frame(root)
         body.pack(side="top", fill="both", expand=True)
-        ttk.Label(body, text=APP, font=("Segoe UI", 17, "bold")).pack(anchor="w")
-        ttk.Label(body, text="Workouts aus deinem Speediance-Account als Garmin-FIT exportieren").pack(
+        heading = ttk.Frame(body)
+        heading.pack(fill="x")
+        ttk.Label(heading, text=APP, font=("Segoe UI", 17, "bold")).pack(side="left")
+        self.language_label.set("Deutsch" if self.language.get() == "de" else "English")
+        ttk.Combobox(heading, textvariable=self.language_label,
+                     values=["Deutsch", "English"], state="readonly",
+                     width=11).pack(side="right", padx=(6, 0))
+        # The combo handles the user's choice without restarting the app.
+        selector = heading.winfo_children()[-1]
+        selector.bind("<<ComboboxSelected>>", self.change_language)
+        ttk.Label(heading, text=self.tr("Sprache:")).pack(side="right")
+        ttk.Label(body, text=self.tr("Workouts aus deinem Speediance-Account als Garmin-FIT exportieren")).pack(
             anchor="w", pady=(2, 8))
 
         login = ttk.LabelFrame(body, text="1 – Speediance-Anmeldung", padding=8)

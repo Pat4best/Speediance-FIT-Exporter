@@ -104,6 +104,35 @@ class GarminMergeTests(unittest.TestCase):
                              if n == 20 and 3 in f}
             self.assertEqual(heart_records[stamp(SPEED_START)], 101)
 
+    def test_confirmed_csv_with_start_95_seconds_before_garmin(self):
+        original = garmin_fit_fixture()
+        speed = speediance_fixture()
+        speed["started_at"] = (GARMIN_START - timedelta(seconds=95)).isoformat()
+        speed["_set_source"] = "gm_manager_history_csv"
+        speed["heart_rate_points"] = []  # CSV has no second-by-second HR
+        merged, meta = merge_workout(speed, read_garmin_activity(original))
+        self.assertEqual(meta["set_timing_aligned_to_activity_start"], True)
+        self.assertEqual(merged["strength_start_offset"], 0)
+        self.assertEqual(merged["started_at"], GARMIN_START.isoformat())
+        self.assertEqual(merged["heart_rate_summary"]["avg"], 110)
+        with TemporaryDirectory() as folder:
+            emitted = write_fit(merged, Path(folder) / "rebased.fit")
+            messages = decode(emitted.read_bytes())
+        sets = [fields for number, fields in messages if number == 225]
+        self.assertEqual(len(sets), 2)
+        self.assertEqual(sets[0][6][1], stamp(GARMIN_START))
+        self.assertEqual([fields[4][1] / 16 for fields in sets], [20.0, 20.0])
+
+    def test_recorded_telemetry_is_not_shifted_by_csv_timing_fix(self):
+        # Only estimated CSV/JSON set timestamps may be realigned. Genuine
+        # original-Speediance timestamps must never be silently shifted.
+        g = read_garmin_activity(garmin_fit_fixture())
+        s = speediance_fixture()
+        s["started_at"] = (GARMIN_START - timedelta(seconds=95)).isoformat()
+        merged, meta = merge_workout(s, g)
+        self.assertEqual(merged["strength_start_offset"], -95)
+        self.assertFalse(meta["set_timing_aligned_to_activity_start"])
+
     def test_speediance_can_override_each_metric_independently(self):
         speed = speediance_fixture()
         garmin = read_garmin_activity(garmin_fit_fixture())

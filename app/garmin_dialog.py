@@ -523,12 +523,20 @@ class GarminMergeDialog(tk.Toplevel):
                 else confirmed_gm["set_count"] if confirmed_gm is not None
                 else None
             )
-            result, meta = overlay_garmin_fit(
-                fit, detail, path, priority,
-                overrides=saved_mappings(),
-                weight_overrides=saved_weight_multipliers(),
-                expected_set_count=expected_sets,
-            )
+            try:
+                result, meta = overlay_garmin_fit(
+                    fit, detail, path, priority,
+                    overrides=saved_mappings(),
+                    weight_overrides=saved_weight_multipliers(),
+                    expected_set_count=expected_sets,
+                )
+            except ValueError:
+                # Do not reduce a real export failure to the useless dialog
+                # "ValueError". Avoid exposing private timestamp values.
+                raise GarminOverlayError(
+                    "Ungültige FIT-Satzdaten oder Zeitzuordnung. "
+                    "Es wurde keine zusammengeführte FIT-Datei erzeugt."
+                ) from None
             if meta["new_speediance_sets"] <= 0 or (
                 expected_sets is not None
                 and meta["new_speediance_sets"] != expected_sets
@@ -548,7 +556,8 @@ class GarminMergeDialog(tk.Toplevel):
                 "garmin_hr=%d speediance_hr=%d out_of_window=%d "
                 "duration_seconds=%d garmin_original=%d preserved_types=%d "
                 "native_device_info=%d speediance_sets=%d replaced_native_sets=%d "
-                "hr_records_added=%d hr_records_patched=%d set_source=%s",
+                "hr_records_added=%d hr_records_patched=%d set_source=%s "
+                "estimated_set_timing_aligned_to_garmin=%s",
                 meta["samples"], meta["garmin_samples"],
                 meta["speediance_samples"], meta["out_of_window_samples"],
                 meta["duration_seconds"],
@@ -560,6 +569,14 @@ class GarminMergeDialog(tk.Toplevel):
                 meta["added_hr_records"],
                 meta["patched_hr_records"],
                 meta["speediance_source"],
+                meta["set_timing_aligned_to_activity_start"],
+            )
+            timing_note = (
+                self.app.tr(
+                    "Hinweis: Das Speediance-Training begann vor der Garmin-Aufzeichnung. "
+                    "Die geschätzten Satzanfänge wurden auf den Garmin-Trainingsbeginn "
+                    "ausgerichtet; originale Garmin-Messpunkte bleiben unverändert.\n\n"
+                ) if meta["set_timing_aligned_to_activity_start"] else ""
             )
             source_note = (
                 self.app.tr("Satzquelle: GM-Manager-Workout-History-CSV. "
@@ -571,7 +588,7 @@ class GarminMergeDialog(tk.Toplevel):
             )
             messagebox.showinfo(
                 self.app.tr("Zusammenführung abgeschlossen"),
-                source_note + self.app.tr("Garmin-originalbasierte FIT-Datei gespeichert:\n%s\n\n"
+                source_note + timing_note + self.app.tr("Garmin-originalbasierte FIT-Datei gespeichert:\n%s\n\n"
                             "Importierte Übungssätze: %d\n"
                             "Erhaltene Garmin-Sätze: %d\n"
                             "Garmin-Geräteinformationen erhalten: %d\n"

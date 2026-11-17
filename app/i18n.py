@@ -4,6 +4,9 @@ Speediance exercise names and raw diagnostic logs are not translated.
 Keep the source German keys stable; English is the user-facing alternative.
 """
 EN = {
+    "Hinweis: Das Speediance-Training begann vor der Garmin-Aufzeichnung. Die geschätzten Satzanfänge wurden auf den Garmin-Trainingsbeginn ausgerichtet; originale Garmin-Messpunkte bleiben unverändert.\n\n":
+        "Note: Speediance started before the Garmin recording. Estimated set start times were aligned to the Garmin activity start; original Garmin sensor samples are unchanged.\n\n",
+
     "Garmin-FIT-Quellen – Abgleich und Merge": "Garmin FIT sources – matching and merge",
     "1 – Garmin-FIT-Quelle auswählen": "1 – Choose Garmin FIT source",
     "Garmin Personal API": "Garmin Personal API",

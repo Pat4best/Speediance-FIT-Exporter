@@ -94,8 +94,10 @@ class MappingEditor(tk.Toplevel):
             wraplength=1030,
         ).pack(anchor="w", pady=(0, 8))
 
+        footer = ttk.Frame(frame)
+        footer.pack(side="bottom", fill="x")
         content = ttk.Frame(frame)
-        content.pack(fill="both", expand=True)
+        content.pack(side="top", fill="both", expand=True)
         content.columnconfigure(0, weight=4)
         content.columnconfigure(1, weight=6)
         content.rowconfigure(0, weight=1)
@@ -173,7 +175,7 @@ class MappingEditor(tk.Toplevel):
         )
         self.assign_button.grid(row=6, column=0, sticky="e", pady=(8, 0))
 
-        bottom = ttk.LabelFrame(frame, text=self.tr("Zuordnung bearbeiten"), padding=9)
+        bottom = ttk.LabelFrame(footer, text=self.tr("Zuordnung bearbeiten"), padding=9)
         bottom.pack(fill="x", pady=(8, 0))
         ttk.Label(bottom, textvariable=self.current, font=("Segoe UI", 10, "bold")).pack(
             anchor="w")
@@ -218,8 +220,8 @@ class MappingEditor(tk.Toplevel):
         ttk.Label(bottom, textvariable=self.weight_info, foreground="#23754a").pack(
             anchor="w", pady=(2, 0))
 
-        controls = ttk.Frame(frame)
-        controls.pack(fill="x", pady=(9, 0))
+        controls = ttk.Frame(footer)
+        controls.pack(fill="x", pady=(6, 0))
         ttk.Button(controls, text=self.tr("Zuordnung entfernen"),
                    command=self.remove).pack(side="left")
         ttk.Button(controls, text=self.tr("Schließen"),

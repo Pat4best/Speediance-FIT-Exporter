@@ -47,10 +47,23 @@ class CalendarTests(unittest.TestCase):
             raise AssertionError("Unexpected version")
         self.client.request = fake
         result = self.client.list_workouts(date(2026, 11, 1), date(2026, 11, 17))
-        self.assertEqual(seen_versions, list(READ_VERSIONS))
+        self.assertEqual(seen_versions, list(READ_VERSIONS) * 2)
         self.assertEqual([w["training_id"] for w in result], [101, 100])
         self.assertEqual(self.client.calendar_fallback_added, 1)
         self.assertEqual(result[0]["day"], "2026-11-16")
+
+    def test_other_device_filter_restores_missing_monday_training(self):
+        def fake(path, **kwargs):
+            # Gym Monster calendar does not show the Nov 16 workout.
+            if "selectedDeviceType=1" in path:
+                return [day("2026-11-13", workout(100, "Intro"))]
+            return [day("2026-11-16", workout(101, "GMC - Mon 16 Nov"))]
+        self.client.request = fake
+        result = self.client.list_workouts(date(2026, 11, 1), date(2026, 11, 17))
+        self.assertEqual([w["training_id"] for w in result], [101, 100])
+        self.assertEqual(self.client.calendar_other_device_added, 1)
+        self.assertEqual(len(self.client.calendar_query_stats), 4)
+        self.assertEqual({stat["device"] for stat in self.client.calendar_query_stats}, {1, 2})
 
     def test_previous_api_failure_does_not_hide_current_activities(self):
         def fake(path, **kwargs):

@@ -144,6 +144,32 @@ class GarminOverlayTests(unittest.TestCase):
         self.assertEqual(original_id[1][1], 1)
         self.assertEqual(derivative_id[1][1], 255)
         self.assertNotEqual(derivative_id[3][1], original_id[3][1])
+        self.assertNotEqual(derivative_id[4][1], original_id[4][1])
+        self.assertEqual(derivative_id[4][1] > original_id[4][1], True)
+
+    def test_each_export_has_independent_file_id_but_same_activity_time(self):
+        original = original_garmin_fit()
+        with TemporaryDirectory() as folder:
+            a, _ = overlay_garmin_fit(
+                original, speediance_executed(), Path(folder) / "one.fit")
+            b, _ = overlay_garmin_fit(
+                original, speediance_executed(), Path(folder) / "two.fit")
+            first, second = a.read_bytes(), b.read_bytes()
+        original_id, id_a, id_b = (values(x, 0)[0]
+                                  for x in (original, first, second))
+        self.assertEqual(id_a[1][1], 255)
+        self.assertEqual(id_b[1][1], 255)
+        self.assertNotEqual(id_a[3][1], original_id[3][1])
+        self.assertNotEqual(id_b[3][1], original_id[3][1])
+        self.assertNotEqual(id_a[3][1], id_b[3][1])
+        self.assertNotEqual(id_a[4][1], original_id[4][1])
+        self.assertNotEqual(id_b[4][1], original_id[4][1])
+        self.assertEqual(values(first, 18)[0][2][1],
+                         values(second, 18)[0][2][1])
+        self.assertEqual(all_message_data(original, 23),
+                         all_message_data(first, 23))
+        self.assertEqual(all_message_data(original, 233),
+                         all_message_data(first, 233))
 
     def test_speediance_record_priority_changes_only_hr_byte(self):
         opts = dict(DEFAULT_PRIORITIES, heart_curve="speediance")

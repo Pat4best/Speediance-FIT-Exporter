@@ -1,4 +1,4 @@
-# Speediance FIT Exporter (Beta 0.1.19)
+# Speediance FIT Exporter (Beta 0.1.20)
 
 Lokale Windows-10/11-Anwendung zum Abruf abgeschlossener Speediance-Trainingseinheiten aus dem eigenen Account und zum Export als Garmin-FIT-Aktivitäten. Die Speediance-API ist **inoffiziell**; der Login ist ohne echten Testaccount nicht verifiziert.
 
@@ -248,6 +248,66 @@ die Aktivitätssuche und den **originalen ZIP/FIT-Download**, ohne private
 Garmin-Endpunkte oder Passwort-Automation. Automatisierte Tests verwenden
 fiktive Token und FIT-Aufzeichnungen. Der tatsächliche Datenabruf muss noch
 mit einem lokal eingegebenen persönlichen Schlüssel im Zielkonto geprüft werden.
+
+## 0.1.20 – Garmin-FIT als Originalbasis (kein rekonstruiertes Speediance-FIT)
+
+**Fehler in 0.1.19:** Die Garmin-API hat die echte Fenix-FIT-Datei
+heruntergeladen, danach wurden jedoch nur Puls-/Zeit-/Kalorienwerte extrahiert
+und mit dem minimalistischen Speediance-Schreibprogramm ein neues FIT
+erzeugt. Native Garmin-Geräteinformationen, Sensor-/Developer-Blöcke und
+proprietäre Trainingsdaten gingen dabei verloren. Dadurch sah der Import
+überwiegend wie ein reiner Speediance-Export aus.
+
+**Korrektur in 0.1.20:** Der Garmin-Originalexport ist jetzt *binär* die
+Ausgangsdatei. Die FIT-Nachrichten werden einzeln gelesen und unverändert
+wieder ausgegeben; nur bewusst ausgewählte Felder dürfen angepasst werden.
+Die ursprünglichen Garmin-Records (HF und andere Metriken), vollständigen
+`device_info`-Meldungen, Garmin-eigenen Zusatzfelder und proprietären
+Nachrichten bleiben erhalten. Im Test bleiben Garmin-Record-Nachrichten
+sogar byteidentisch, sofern die Herzfrequenzpriorität Garmin lautet.
+
+- Alle bestehenden Garmin-SET-Nachrichten (`global 225`) werden in dieser
+  **neuen** Datei durch die detaillierten tatsächlichen Speediance-Sätze
+  ersetzt, damit die Übungs-/Satzdaten nicht doppelt vorkommen. Die
+  bewährte Gewichtsumrechnung aus 0.1.18 bleibt unverändert.
+- Mit **Garmin als Herzfrequenzquelle** werden die nativen Garmin-HF-Records
+  nicht überschrieben. Echte zusätzliche Speediance-Messungen ergänzen
+  nur fehlende FIT-Zeitstempel. Mit **Speediance als bevorzugter Quelle**
+  wird gezielt der HF-Wert in überlappenden Garmin-Records aktualisiert –
+  alle anderen Sensorfelder desselben Garmin-Records bleiben unverändert.
+- Durchschnitts-/Maximalpuls und Kalorien können pro Feld weiterhin
+  Garmin oder Speediance bevorzugen. Bei einem einzelnen Garmin-Lap können
+  dessen Summen ebenfalls abgeglichen werden; mehrere individuelle Garmin-
+  Runden bleiben unangetastet. Multisport-FITs mit mehreren Sitzungen
+  werden aus Sicherheitsgründen abgelehnt.
+- Die originale `file_id` der Fenix wird in der **abgeleiteten Kopie**
+  als Entwicklungs-/Merge-Datei mit eigener reproduzierbarer Seriennummer
+  gekennzeichnet. Das vermeidet die identische Geräte-Datei-ID, ohne
+  die originalen Garmin-`device_info`-Meldungen zu verfälschen.
+- Garmin FIT wird **nirgends auf Garmin Connect** geändert: nur
+  Herunterladen per Personal API und Speichern einer neuen lokalen FIT.
+  Der spätere manuelle Import kann ein Duplikat verursachen oder von
+  Garmin Connect als schon bekannte Aktivität zurückgewiesen werden;
+  das lässt sich ohne offizielle Schreib-API nicht garantieren.
+- **Datenpriorität Trainingsbeginn/-dauer:** Garmin empfohlen, wenn die
+  Garmin-Aufzeichnung vollständig bleiben soll. Bei Auswahl Speediance
+  werden Sitzungs-Zusammenfassungsfelder angepasst, die ursprünglichen
+  Garmin-Sensormeldungen außerhalb der kürzeren Speediance-Dauer werden
+  jedoch **nicht zerstört**. Dadurch können Zeitangaben von
+  Detailmessungen und Session-Summary voneinander abweichen.
+- Die genauen Startzeiten einzelner Speediance-Sätze sind weiterhin
+  nicht unabhängig bestätigt; wo die API nur Satzdauern liefert,
+  bleiben die Satzzeitpositionen geschätzt. Es werden keine
+  Garmin-Messwerte erfunden.
+
+**Diagnose:** Der neue Merge-Logeintrag nennt die Zahl der erhaltenen
+Garmin-Nachrichten/-Meldungstypen, Geräteinformationen, ersetzten
+Garmin-Sätze und ergänzten Speediance-Sätze. Es werden keine originalen
+Garmin-Privatfelder, API-Schlüssel, Nutzernamen oder Pulswerte geloggt.
+
+Der vollständige Neuaufbau als reine Speediance-FIT-Datei bleibt als
+**separater** Exportknopf vorhanden. Der Originaldatei-basierte Garmin-Merge
+wird ausschließlich über **„Mit Garmin abgleichen…“** aufgerufen.
 
 ## Windows-Installer
 

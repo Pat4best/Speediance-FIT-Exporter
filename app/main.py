@@ -364,8 +364,10 @@ class App(tk.Tk):
                 from speediance_api import APIError
                 from garmin_personal import GarminPersonalError
                 from garmin_fit_reader import GarminFitError
+                from garmin_fit_overlay import GarminOverlayError
                 display = (str(exc) if isinstance(
-                    exc, (APIError, GarminPersonalError, GarminFitError)
+                    exc, (APIError, GarminPersonalError,
+                          GarminFitError, GarminOverlayError)
                 ) else type(exc).__name__)
                 self.events.put(("error", display, None))
         threading.Thread(target=worker, daemon=True).start()

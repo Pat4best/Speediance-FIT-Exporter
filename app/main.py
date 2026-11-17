@@ -23,7 +23,7 @@ from preferences import load_language, save_language
 from i18n import translate
 
 APP = "Speediance FIT Exporter"
-VERSION = "0.1.25-beta"
+VERSION = "0.1.26-beta"
 DATA = Path(os.environ.get("LOCALAPPDATA", Path.home())) / "SpeedianceFITExporter"
 DATA.mkdir(parents=True, exist_ok=True)
 LOG = DATA / "diagnose.log"
@@ -506,8 +506,9 @@ class App(tk.Tk):
 
         def done(summary):
             self.status.set(
-                self.tr("API-Diagnose abgeschlossen: %d Detail-Abfragen, %d Antworten mit Sätzen.") %
-                (summary["checked"], summary["responses_with_completed_sets"])
+                self.tr("API-Diagnose: %d normale Detail-Abfragen (%d mit Sätzen), %d recordId-Abfragen (%d mit Sätzen).") %
+                (summary["checked"], summary["responses_with_completed_sets"],
+                 summary["record_ref_checked"], summary["record_ref_responses_with_completed_sets"])
             )
             self.show_log()
 

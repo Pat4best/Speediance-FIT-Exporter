@@ -2,7 +2,7 @@
 
 Never log request payloads, headers, full responses or account IDs.
 """
-from datetime import date
+from datetime import date, datetime, timedelta
 import json
 import time
 import urllib.error
@@ -10,12 +10,16 @@ import urllib.request
 
 HOSTS = {"EU": "euapi.speediance.com", "Global": "api2.speediance.com"}
 ROUTES = {
-    1: ["cttTrainingInfoDetail"],
+    1: ["freeTraining"],
     2: ["courseTrainingInfoDetail"],
+    3: ["cttTrainingInfoDetail"],
     4: ["aiCourseTrainingInfoDetail"],
     5: ["cttTrainingInfoDetail"],
+    6: ["freeTraining"],
+    7: ["freeTraining"],
+    9: ["aiCourseTrainingInfoDetail"],
 }
-ALL_ROUTES = ["aiCourseTrainingInfoDetail", "courseTrainingInfoDetail", "cttTrainingInfoDetail"]
+ALL_ROUTES = ["cttTrainingInfoDetail", "courseTrainingInfoDetail", "freeTraining", "aiCourseTrainingInfoDetail"]
 # Speediance keeps one session per client type. The phone app uses SOFTWARE.
 # BIKE/NANO work as separate slots, provided the user owns neither device.
 # References: labatt/speediance-mcp and labatt/speediance-smartgym-workout-manager.
@@ -153,6 +157,8 @@ class Client:
         items = {}
         self.calendar_fallback_added = 0
         self.calendar_other_device_added = 0
+        self.history_added = 0
+        self.history_stats = {}
         self.calendar_query_stats = []
         year, month = start.year, start.month
         device_types = (self.device, 2 if self.device == 1 else 1)
@@ -253,13 +259,86 @@ class Client:
                     (year, month)
                 )
             year, month = (year + 1, 1) if month == 12 else (year, month + 1)
+        # Unlike monthNew, userTrainingDataRecord includes completed CUSTOM
+        # templates. No new login; this is a read-only authenticated GET.
+        history_path = (
+            "/api/mobile/v2/report/userTrainingDataRecord?"
+            "startDate=%s&endDate=%s" % (start.isoformat(), end.isoformat())
+        )
+        try:
+            rows = self.request(history_path)
+        except APIError:
+            self.logger.warning("Training history query failed (APIError)")
+            rows = None
+        if not isinstance(rows, list):
+            self.logger.warning("Training history unavailable or unexpected response type")
+        else:
+            stat = {"rows": len(rows), "added": 0, "duplicates": 0,
+                    "outside": 0, "health": 0, "invalid": 0}
+            for record in rows:
+                if not isinstance(record, dict):
+                    stat["invalid"] += 1
+                    continue
+                # Phone Health walk/rides aren't Gym Monster workouts.
+                if record.get("belongUserHealth") or not record.get("trainingId"):
+                    stat["health"] += 1
+                    continue
+                try:
+                    tid = int(record["trainingId"])
+                    date_text = str(record["startTime"])[:10]
+                    started = date.fromisoformat(date_text)
+                    if tid <= 0:
+                        raise ValueError("invalid id")
+                except (ValueError, KeyError, TypeError):
+                    stat["invalid"] += 1
+                    continue
+                if not start <= started <= end:
+                    stat["outside"] += 1
+                    continue
+                if tid in items:
+                    stat["duplicates"] += 1
+                    continue
+                try:
+                    seconds = max(0, float(record.get("trainingTime") or 0))
+                except (TypeError, ValueError):
+                    seconds = 0
+                # History startTime is LOCAL; derive the end only when the
+                # timestamp is present, rather than inventing clock times.
+                try:
+                    started_at = datetime.fromisoformat(
+                        str(record["startTime"]).replace("Z", "+00:00"))
+                    finished_at = (started_at + timedelta(seconds=seconds)).isoformat()
+                except (ValueError, TypeError):
+                    finished_at = None
+                items[tid] = {
+                    "training_id": tid,
+                    "day": started.isoformat(),
+                    "title": record.get("title") or "Training",
+                    "finished_at": finished_at,
+                    "duration_min": seconds / 60,
+                    "calories": record.get("calorie") or 0,
+                    "type": record.get("type") or 0,
+                    "unit": self.unit,
+                    "device_type": self.device,
+                    "source": "history",
+                }
+                stat["added"] += 1
+            self.history_added = stat["added"]
+            self.history_stats = stat
+            self.logger.info(
+                "Training history rows=%d added=%d duplicates=%d outside=%d "
+                "health=%d invalid=%d",
+                stat["rows"], stat["added"], stat["duplicates"],
+                stat["outside"], stat["health"], stat["invalid"]
+            )
         result = list(items.values())
         result.sort(key=lambda w: (
             w["day"], str(w["finished_at"] or ""), w["training_id"]
         ), reverse=True)
         self.logger.info(
-            "Loaded %d completed workouts; recovered=%d via old API and %d via other device",
-            len(result), self.calendar_fallback_added, self.calendar_other_device_added
+            "Loaded %d completed workouts; recovered=%d old API, %d other device, %d history",
+            len(result), self.calendar_fallback_added,
+            self.calendar_other_device_added, self.history_added
         )
         return result
 

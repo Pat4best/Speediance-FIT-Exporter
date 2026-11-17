@@ -1,4 +1,4 @@
-# Speediance FIT Exporter (Beta 0.1.20)
+# Speediance FIT Exporter (Beta 0.1.21)
 
 Lokale Windows-10/11-Anwendung zum Abruf abgeschlossener Speediance-Trainingseinheiten aus dem eigenen Account und zum Export als Garmin-FIT-Aktivitäten. Die Speediance-API ist **inoffiziell**; der Login ist ohne echten Testaccount nicht verifiziert.
 
@@ -308,6 +308,63 @@ Garmin-Privatfelder, API-Schlüssel, Nutzernamen oder Pulswerte geloggt.
 Der vollständige Neuaufbau als reine Speediance-FIT-Datei bleibt als
 **separater** Exportknopf vorhanden. Der Originaldatei-basierte Garmin-Merge
 wird ausschließlich über **„Mit Garmin abgleichen…“** aufgerufen.
+
+## 0.1.21 – lokale Garmin-FIT und Speediance-FIT bei API-Ausfällen
+
+Die Garmin Personal API ist jetzt **optional**. Im Fenster
+**„Mit Garmin abgleichen…“** gibt es zwei Garmin-Quellen:
+
+- **Garmin Personal API:** vorhandenen Schlüssel lokal verwenden und
+  Garmin-Aktivitäten über die offizielle schreibgeschützte API suchen.
+- **Lokale Garmin-FIT-Datei:** eine selbst aus Garmin Connect exportierte
+  **originale `.fit`-Aktivität** auswählen. Es ist **kein Garmin-API-Schlüssel**
+  nötig. Der Exporter prüft die Dateistruktur samt CRC, verlangt eine
+  Original-Garmin-Datei (nicht einen Speediance-/Merge-Export), prüft eine
+  einzelne Sitzung und gleicht Beginn und Dauer mit dem ausgewählten
+  Speediance-Training ab (**max. 20 Minuten Startdifferenz**, **max. 40 %
+  Dauerabweichung**). Die ursprüngliche Datei wird nicht verändert.
+
+Die Garmin-Aktivitätssuche und die lokale Garmin-Dateiprüfung laufen jetzt
+**unabhängig** vom Abruf der Speediance-Satzdetails. Dadurch lässt sich die
+Garmin-Seite zuverlässig auswählen, auch wenn Speediance einen Fehler liefert.
+
+### Wenn Speediance für ein Training keine Übungsdetails mehr liefert
+
+In einem Praxistest lieferte `cttTrainingInfoDetail` zeitweise
+`code=100041`, die anderen Routen `403` oder keine Sätze, obwohl
+dieses Training zuvor erfolgreich exportiert worden war. Ursache auf
+Speediance-Serverseite weiterhin unbestätigt.
+
+1. Für den Detailabruf probiert der Exporter zusätzlich zu den normalen
+   schreibgeschützten Routen die ältere Versionskennung `40304` – **ohne**
+   Anmeldung unter einem anderen Client-Typ.
+2. Zusätzlich kannst du im Garmin-Merge-Fenster unter
+   **„Bei Speediance-API-Ausfall“** einen **bereits früher erfolgreich
+   erzeugten direkten Speediance-`.fit`-Export** dieses Trainings wählen,
+   z. B. mit Version 0.1.18. Die Datei muss zu genau derselben
+   Speediance-Trainings-ID gehören und eine einzelne Krafttrainings-Sitzung
+   mit aufgezeichneten Sätzen enthalten. Die Prüfung erfolgt lokal.
+3. Liefert Speediance wieder Sätze, verwendet der Merge die aktuellen
+   Cloud-Daten. Scheitert der Detailabruf, nimmt er stattdessen die
+   in der lokalen Speediance-FIT vorhandenen **echten Gewichte, Sätze,
+   Wiederholungen und Zeitstempel**, ohne neue Werte zu schätzen.
+   Die ursprünglichen Speediance-`SET`-Nachrichten werden direkt
+   übernommen, statt durch einen neuen Plan ersetzt zu werden.
+   Falls weder Cloud noch passende Backup-FIT vorhanden sind, wird der
+   Merge abgebrochen. **Keine leeren oder erfundenen Trainingseinheiten.**
+
+Beide Eingabe-FIT-Dateien bleiben unverändert; die neu erzeugte Datei
+muss unter einem **anderen Dateinamen** gespeichert werden.
+Passende Garmin-Sensor-/Geräteinformationen werden weiterhin binär
+erhalten; die bisherige Auswahl der Datenprioritäten bleibt bestehen.
+Garmin Connect wird über die Personal API **niemals verändert**.
+
+**Hinweis:** Ein lokaler Garmin-Export ersetzt *nur* die Garmin-API.
+Für Speediance-Sätze ist weiterhin der Speediance-Detailabruf
+**oder eine früher erzeugte Speediance-FIT** notwendig.
+Ob die neue Version den konkreten Speediance-API-Fehler
+`100041` über die alte Versionskennung beheben kann, lässt
+sich erst im echten Konto feststellen.
 
 ## Windows-Installer
 

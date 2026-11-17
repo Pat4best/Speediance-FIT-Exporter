@@ -223,16 +223,24 @@ class MappingEditor(tk.Toplevel):
         self._build()
         self._refresh_left(selected=current)
         self._refresh_results()
-        self.current.set(current or self.tr("Noch keine Übung ausgewählt"))
-        self.category.set(old_codes[0])
-        self.subtype.set(old_codes[1])
-        if all(old_codes):
+        self._restore_picker_state(current, old_codes)
+        # Treeview emits selection events after rebuild. Restore draft IDs
+        # once they have settled so switching DE/EN cannot discard an
+        # unsaved user-selected Garmin exercise.
+        self.after_idle(lambda: self._restore_picker_state(current, old_codes))
+        self.toggle_manual()
+
+    def _restore_picker_state(self, name, codes):
+        self.selected_name = name
+        self.current.set(name or self.tr("Noch keine Übung ausgewählt"))
+        self.category.set(codes[0])
+        self.subtype.set(codes[1])
+        if all(codes):
             self.assigned_label.set(
-                self._label_for_codes(int(old_codes[0]), int(old_codes[1]))
+                self._label_for_codes(int(codes[0]), int(codes[1]))
             )
         else:
             self.assigned_label.set(self.tr("Noch keine Garmin-Übung gewählt"))
-        self.toggle_manual()
 
     def _refresh_left(self, selected=None):
         search = normalize_query(self.left_search.get())

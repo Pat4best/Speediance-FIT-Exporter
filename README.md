@@ -1,4 +1,4 @@
-# Speediance FIT Exporter (Beta 0.1.21)
+# Speediance FIT Exporter (Beta 0.1.22)
 
 Lokale Windows-10/11-Anwendung zum Abruf abgeschlossener Speediance-Trainingseinheiten aus dem eigenen Account und zum Export als Garmin-FIT-Aktivitäten. Die Speediance-API ist **inoffiziell**; der Login ist ohne echten Testaccount nicht verifiziert.
 
@@ -365,6 +365,63 @@ Für Speediance-Sätze ist weiterhin der Speediance-Detailabruf
 Ob die neue Version den konkreten Speediance-API-Fehler
 `100041` über die alte Versionskennung beheben kann, lässt
 sich erst im echten Konto feststellen.
+
+## 0.1.22 – vereinfachtes Handling: Speediance-Training + Garmin-FIT
+
+**Nur zwei Quellen:** Speediance liefert die **fertig aufgezeichneten Übungen,
+Sätze, Wiederholungen und tatsächlichen Gewichte direkt per Cloud-API**;
+Garmin liefert die **Original-FIT-Datei** über die persönliche Garmin-API
+**oder** über den Dateiauswahldialog. Der Nutzer muss **keine
+Speediance-FIT-Datei besitzen oder extra erzeugen**.
+
+1. Bei Speediance anmelden und **eine abgeschlossene Trainingseinheit**
+   markieren.
+2. „Mit Garmin abgleichen…“ anklicken und entweder „Lokale Garmin-FIT-Datei“
+   (jetzt voreingestellt) oder „Garmin Personal API“ verwenden.
+3. Die passende Fenix/Garmin-Aktivität auswählen, Datenprioritäten festlegen
+   und eine **neue** Garmin-basierte FIT-Datei erzeugen.
+
+Die in 0.1.21 eingeführte zusätzliche **Speediance-FIT-Dateiauswahl ist aus
+der Benutzeroberfläche entfernt**. Die Trainingsliste selbst enthält nur
+Zusammenfassungen; tatsächliche Satzgewichte stehen erst im
+Speediance-Detailabruf. Ein Hinweis auf eine notwendige Speediance-FIT
+wäre deshalb irreführend.
+
+### Lokaler Cache für fertig absolvierte Speediance-Trainings
+
+Sobald der Exporter eine abgeschlossene Trainingseinheit **einmal
+erfolgreich** vollständig von Speediance erhalten hat, bewahrt er die
+aufgezeichneten Satzdaten und die vorhandenen echten Herzfrequenzmessungen
+automatisch unter
+`%LOCALAPPDATA%\\SpeedianceFITExporter\\completed_training_cache`
+für den aktuellen Windows-Benutzer auf. Weitere FIT-Exporte und Garmin-Merges
+derselben Trainingseinheit können diese bereits abgefragten Daten
+wiederverwenden, ohne einen fehleranfälligen erneuten Detailabruf.
+
+Der Cache wird nach Speediance-Account, Serverregion und Trainings-ID
+getrennt und beim Lesen auch gegen das Trainingsdatum abgeglichen.
+Die lokalen JSON-Dateien enthalten **Trainings- und Pulsmessdaten**,
+aber **keine Passwörter, Tokens, Sensor-IDs oder API-Antwort-UUIDs**.
+Sie werden nicht automatisch synchronisiert oder hochgeladen.
+Wer diese lokal gespeicherten Trainingsdaten löschen möchte, kann den
+oben genannten Ordner entfernen.
+
+**Grenze:** Hat Speediance die Satzdetails noch **nie erfolgreich an
+0.1.22** geliefert, ist der Cache natürlich noch leer. Die ältere
+Version `40304` wird bei einem API-Fehler zusätzlich abgefragt,
+doch wenn Speediance weiterhin `100041` / `403` oder keine
+abgeschlossenen Sätze zurückliefert, ist ein zuverlässiger Merge
+dieses Trainings aktuell nicht möglich. Der Exporter stoppt dann
+ausdrücklich, statt geplante Gewichte als ausgeführte auszugeben.
+Ein Cache aus früheren Versionen 0.1.18–0.1.21 wird nicht
+rückwirkend erzeugt.
+
+Der direkte Speediance→FIT-Export, die Wahl zwischen Garmin-API und
+lokaler Garmin-FIT und alle einzelnen Messwert-Prioritäten bleiben erhalten.
+Garmin Connect wird beim Merge ausschließlich **gelesen**.
+Eine spätere manuelle Einfuhr kann eine zusätzliche Aktivität erzeugen.
+
+---
 
 ## Windows-Installer
 

@@ -396,7 +396,7 @@ class Client:
                     calendar_kind = items[tid].get("type")
                     items[tid]["history_type"] = shape["history_type"]
                     self.logger.info(
-                        "Completed workout history cross-reference: "
+                        "History/calendar cross-reference (not selected workout): "
                         "history_fields=%s id_vs_trainingId=%s "
                         "calendar_type=%s history_type=%s",
                         shape["identifier_fields"], shape["id_relation"],

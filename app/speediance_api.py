@@ -426,7 +426,13 @@ class Client:
                     "weight": weight,
                     "weight_already_total": already_total,
                 })
-            exercises.append({"name": ex.get("actionLibraryName") or "Übung", "sets": sets})
+            exercises.append({
+                "name": ex.get("actionLibraryName") or "Übung",
+                "sets": sets,
+                # 1 = repetitions, 0/2 = timed; needed to avoid counting
+                # cardio/dehn seconds as strength repetitions in Garmin.
+                "completion_method": ex.get("completionMethod"),
+            })
         count = sum(len(e["sets"]) for e in exercises)
         self.logger.info("Loaded %d exercises and %d sets", len(exercises), count)
         self.logger.info(

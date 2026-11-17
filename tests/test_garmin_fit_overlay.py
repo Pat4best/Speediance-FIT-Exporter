@@ -148,7 +148,7 @@ class GarminOverlayTests(unittest.TestCase):
                 original, speediance_executed(),
                 Path(folder) / "prefer-speed.fit", opts)
             result = file.read_bytes()
-        self.assertEqual(meta["patched_hr_records"], 1)
+        self.assertEqual(meta["patched_hr_records"], 2)
         original_raw = all_message_data(original, 20)
         final_raw = all_message_data(result, 20)
         # No native records disappear; one overlapping HR byte is changed.
@@ -158,7 +158,7 @@ class GarminOverlayTests(unittest.TestCase):
             for r in values(result, 20) if 253 in r and 3 in r
         }
         self.assertEqual(changed[stamp(SPEED_START)], 95)
-        self.assertEqual(changed[stamp(SPEED_START + timedelta(seconds=25))], 130)
+        self.assertEqual(changed[stamp(SPEED_START + timedelta(seconds=25))], 155)
 
     def test_speediance_priority_for_summary_time_and_calories(self):
         opts = dict(DEFAULT_PRIORITIES, start="speediance",

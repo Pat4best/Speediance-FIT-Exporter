@@ -9,7 +9,7 @@ import urllib.error
 import urllib.request
 from urllib.parse import quote
 
-from heart_rate import graph_details, valid_bpm
+from heart_rate import graph_details, graph_shape, valid_bpm
 from hr_sensor import find_hr_sensor
 from weight_handling import set_weight
 
@@ -449,6 +449,12 @@ class Client:
                     parsed["raw_sample_count"], timing_estimated,
                     "yes" if parsed["summary"] else "no"
                 )
+                if not heart_points and parsed["raw_sample_count"]:
+                    # Shape only: no UUIDs, arbitrary field names or BPM values.
+                    self.logger.warning(
+                        "Heart-rate sample structure unrecognized: %s",
+                        graph_shape(graph)
+                    )
             except (APIError, ValueError, TypeError):
                 # Optional data must never break the strength export.
                 self.logger.warning("Heart-rate graph request unavailable")

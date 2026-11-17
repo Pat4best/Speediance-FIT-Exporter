@@ -33,6 +33,9 @@ EN = {
     "Garmin-originalbasierte FIT-Datei gespeichert:\n%s\n\nSpeediance-Krafttrainingssätze: %d\nGarmin-Geräteinformationen erhalten: %d\nZusätzliche HF-Records: %d\nAußerhalb der gewählten Dauer: %d\n\nGarmin Connect wurde NICHT verändert.":
         "Garmin-based FIT file saved:\n%s\n\nSpeediance strength sets: %d\nGarmin device information preserved: %d\nAdded HR records: %d\nOutside selected duration: %d\n\nGarmin Connect was NOT modified.",
     "Mit Garmin abgleichen…": "Match with Garmin…",
+    "Speediance-Datensatz prüfen…": "Inspect Speediance response…",
+    "API-Diagnose abgeschlossen: %d Detail-Abfragen, %d Antworten mit Sätzen.":
+        "API diagnosis completed: %d detail requests, %d responses with completed sets.",
     "Garmin Personal API – Abgleich und FIT-Merge": "Garmin Personal API – match and FIT merge",
     "Garmin-Aktivität mit Speediance zusammenführen": "Merge a Garmin activity with Speediance",
     "Nur Lesen über die offizielle Garmin Personal API. Die ursprüngliche Garmin-Connect-Aktivität bleibt unverändert.":

@@ -14,6 +14,7 @@ from hr_sensor import find_hr_sensor
 from weight_handling import measured_set_weight
 from activity_time import activity_bounds
 from completed_workout_cache import load_detail_cache, save_detail_cache
+from api_shape_diagnostic import structural_log
 
 HOSTS = {"EU": "euapi.speediance.com", "Global": "api2.speediance.com"}
 ROUTES = {
@@ -313,6 +314,7 @@ class Client:
                                 "type": plan.get("type") or 0,
                                 "unit": self.unit,
                                 "device_type": device_type,
+                                "_calendar_response_shape": structural_log(plan),
                             }
                             added += 1
                             if version == READ_VERSIONS[-1]:
@@ -395,6 +397,7 @@ class Client:
                     shape = completed_history_shape(record)
                     calendar_kind = items[tid].get("type")
                     items[tid]["history_type"] = shape["history_type"]
+                    items[tid]["_history_response_shape"] = structural_log(record)
                     self.logger.info(
                         "History/calendar cross-reference (not selected workout): "
                         "history_fields=%s id_vs_trainingId=%s "
@@ -440,6 +443,7 @@ class Client:
                     "started_at": record.get("startTime"),
                     "watch_type": record.get("watchType") or 0,
                     "hr_sensor": find_hr_sensor(record),
+                    "_history_response_shape": structural_log(record),
                 }
                 stat["added"] += 1
             self.history_added = stat["added"]
@@ -478,6 +482,64 @@ class Client:
             self.calendar_other_device_added, self.history_added
         )
         return result
+
+    def diagnose_workout(self, workout):
+        """Inspect ONLY the selected completed workout; GET requests are read-only.
+
+        The saved history/calendar shapes are from the exact records already
+        received during 'Trainings laden'. No raw server values are logged.
+        """
+        self.logger.info("Selected Speediance workout API structure BEGIN")
+        for source, key in (("history", "_history_response_shape"),
+                            ("calendar", "_calendar_response_shape")):
+            schema = workout.get(key)
+            self.logger.info(
+                "Selected %s response structure=%s",
+                source, schema if isinstance(schema, str) else "unavailable"
+            )
+        # The selected trainingId is proven by the loaded calendar/history.
+        # Do not substitute the history record's different 'id' speculatively.
+        kind = workout.get("history_type")
+        if kind not in ROUTES:
+            kind = workout.get("type")
+        routes = list(dict.fromkeys(ROUTES.get(kind, []) + ALL_ROUTES))
+        variants = [(route, None) for route in routes]
+        variants.extend((route, READ_VERSIONS[-1]) for route in routes)
+        successes = 0
+        for route, version in variants:
+            try:
+                response = self.request(
+                    "/api/app/trainingInfo/%s/%d" % (route, workout["training_id"]),
+                    allow_error=True, read_version=version
+                )
+            except APIError:
+                self.logger.info(
+                    "Selected detail structure route=%s version=%s APIError",
+                    route, version or "default"
+                )
+                continue
+            self.logger.info(
+                "Selected detail structure route=%s version=%s schema=%s",
+                route, version or "default", structural_log(response)
+            )
+            # Count performed entries, but never print repetitions or weights.
+            if isinstance(response, dict):
+                response = next((response[key] for key in (
+                    "list", "records", "data", "trainingInfoDetailList", "exerciseList"
+                ) if isinstance(response.get(key), list)), [])
+            if isinstance(response, list):
+                successes += int(any(
+                    isinstance(ex, dict) and isinstance(ex.get("finishedReps"), list)
+                    and len(ex["finishedReps"]) > 0
+                    for ex in response
+                ))
+        self.logger.info(
+            "Selected Speediance workout API structure END checked=%d responses_with_completed_sets=%d",
+            len(variants), successes
+        )
+        return {"checked": len(variants),
+                "responses_with_completed_sets": successes,
+                "history_available": bool(workout.get("_history_response_shape"))}
 
     def detail(self, workout):
         # A completed workout is immutable. Prefer its previously verified

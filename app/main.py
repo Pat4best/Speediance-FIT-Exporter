@@ -22,7 +22,7 @@ from preferences import load_language, save_language
 from i18n import translate
 
 APP = "Speediance FIT Exporter"
-VERSION = "0.1.8-beta"
+VERSION = "0.1.9-beta"
 DATA = Path(os.environ.get("LOCALAPPDATA", Path.home())) / "SpeedianceFITExporter"
 DATA.mkdir(parents=True, exist_ok=True)
 LOG = DATA / "diagnose.log"
@@ -452,9 +452,10 @@ class App(tk.Tk):
                 ))
             recovered = getattr(self.client, "calendar_fallback_added", 0)
             other_device = getattr(self.client, "calendar_other_device_added", 0)
+            history = getattr(self.client, "history_added", 0)
             self.status.set(
-                self.tr("%d abgeschlossene Workouts geladen (frühere API: +%d; anderer Gerätetyp: +%d).") %
-                (len(items), recovered, other_device)
+                self.tr("%d abgeschlossene Workouts geladen (Historie: +%d; frühere API: +%d; anderer Gerätetyp: +%d).") %
+                (len(items), history, recovered, other_device)
             )
 
         self.run_job(lambda: self.client.list_workouts(start, end), done)

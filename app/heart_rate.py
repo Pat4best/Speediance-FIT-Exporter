@@ -152,53 +152,143 @@ def graph_shape(data):
     }
 
 
-def graph_details(data, duration_seconds=None):
-    """Return samples, true summary values, source format and timeline provenance.
+def _numeric_time(value):
+    if isinstance(value, (dict, list, bool)):
+        return None
+    try:
+        number = float(value)
+    except (TypeError, ValueError, OverflowError):
+        return None
+    return number if math.isfinite(number) else None
 
-    If a list lacks time/seconds fields, samples are placed evenly over the
-    workout's duration. This does not interpolate heart-rate measurements.
+
+def _clock_mode(times, duration, start_epoch=None, start_day_seconds=None):
+    """Determine the time unit once per series, not independently per sample.
+
+    Return (label, value_to_elapsed_seconds, timing_estimated).
+    Unix seconds/ms/us are compared to the known session clock. If the clock
+    differs substantially, the source is only rebased for the same session
+    when its measured span is plausible. Such an alignment is explicit and
+    never described as an exact absolute timestamp.
+    """
+    if not times:
+        return "no_time_values", None, True
+    first, last = min(times), max(times)
+    if first < 0 or duration is None or duration <= 0:
+        return "invalid_or_unknown_time", None, False
+    span = last - first
+    reference = _numeric_time(start_epoch)
+    def epoch_mode(scale, label):
+        if reference is not None:
+            # The raw source clock is usable when it covers this workout.
+            offsets = [v / scale - reference for v in times]
+            aligned = sum(-120 <= sec <= duration + 120 for sec in offsets)
+            if aligned >= max(1, int(0.8 * len(times))):
+                return label, lambda v: v / scale - reference, False
+            # Some Speediance API routes use a different local/UTC convention.
+            # Rebase only a plausible *same-day* measurement; make the
+            # estimated placement explicit to users.
+            if (abs(first / scale - reference) <= 24 * 3600
+                    and span / scale <= duration * 1.5 + 120):
+                return label + "_rebased", lambda v: (v - first) / scale, True
+            return label + "_clock_mismatch", None, False
+        if span / scale <= duration * 1.5 + 120:
+            return label + "_rebased", lambda v: (v - first) / scale, True
+        return label + "_unknown_clock", None, False
+
+    if 946684800000000 <= first <= 4102444800000000:
+        return epoch_mode(1_000_000, "unix_microseconds")
+    if 946684800000 <= first <= 4102444800000:
+        return epoch_mode(1000, "unix_milliseconds")
+    if 946684800 <= first <= 4102444800:
+        return epoch_mode(1, "unix_seconds")
+
+    if last <= duration + 120:
+        return "elapsed_seconds", lambda v: v, False
+    if last <= 1000 * (duration + 120) and last > 86400:
+        return "elapsed_milliseconds", lambda v: v / 1000, False
+
+    # Some sources report milliseconds since midnight instead of an epoch.
+    # Compare to the local activity clock before falling back to rebasing.
+    if last <= 86_400_000 and span / 1000 <= duration * 1.5 + 120:
+        local = _numeric_time(start_day_seconds)
+        if local is not None:
+            offsets = [v / 1000 - local for v in times]
+            aligned = sum(-120 <= sec <= duration + 120 for sec in offsets)
+            if aligned >= max(1, int(0.8 * len(times))):
+                return "milliseconds_since_midnight", lambda v: v / 1000 - local, False
+
+    # Unknown origin but high-resolution duration looks like milliseconds.
+    # Do not stretch/compress the real sampling intervals to fill the workout.
+    if 86400 < last < 946684800 and 5 <= span / 1000 <= duration * 1.5 + 120:
+        return "relative_milliseconds_rebased", lambda v: (v - first) / 1000, True
+    if 86400 < last < 946684800 and 5 <= span <= duration * 1.5 + 120:
+        return "relative_seconds_rebased", lambda v: v - first, True
+    return "unrecognized_time_scale", None, False
+
+
+def graph_details(data, duration_seconds=None, start_epoch=None,
+                  start_day_seconds=None):
+    """Return true BPM measurements on a single, classified time axis.
+
+    Supported time fields: elapsed seconds, elapsed ms, Unix s/ms/us and
+    milliseconds since local midnight. Unknown-origin clocks are rebased only
+    if their measured span is plausible and are reported as estimated timing.
+    A sampling time is never guessed from a value unrelated to the session.
     """
     series, series_format = _unwrap_series(data)
-    duration = None
-    try:
-        duration = float(duration_seconds)
-        if not math.isfinite(duration) or duration <= 0:
-            duration = None
-    except (TypeError, ValueError):
-        pass
-    estimates = False
-    samples = {}
-    count = len(series)
-    for index, entry in enumerate(series):
+    duration = _numeric_time(duration_seconds)
+    if duration is not None and duration <= 0:
+        duration = None
+    extracted = []
+    clock_values = []
+    for i, entry in enumerate(series):
         if isinstance(entry, dict):
-            # Speediance variants also use keys such as heartRateValue or
-            # realHeartRate. Avoid numeric timing/ID/maximum fields.
-            raw = _entry_heart_rate(entry)
-            elapsed = next((entry[key] for key in (
+            bpm = valid_bpm(_entry_heart_rate(entry))
+            raw_time = next((entry[key] for key in (
                 "elapsedSeconds", "elapsed", "seconds", "time", "second"
             ) if key in entry), None)
         else:
-            raw, elapsed = entry, None
-        bpm = valid_bpm(raw)
+            bpm, raw_time = valid_bpm(entry), None
         if bpm is None:
             continue
-        if elapsed is None:
-            estimates = True
-            if duration is not None and count > 1:
-                elapsed = index * duration / (count - 1)
-            elif duration is not None:
-                elapsed = duration / 2
+        numeric_time = _numeric_time(raw_time)
+        extracted.append((i, bpm, numeric_time))
+        if numeric_time is not None:
+            clock_values.append(numeric_time)
+
+    mode, convert, rebased = _clock_mode(
+        clock_values, duration, start_epoch, start_day_seconds
+    )
+    if not clock_values:
+        mode = "uniform_positions_without_timestamps"
+        rebased = True
+    samples = {}
+    skipped_time = 0
+    for index, bpm, raw in extracted:
+        if raw is not None:
+            if convert is None:
+                skipped_time += 1
+                continue
+            second = convert(raw)
+        else:
+            rebased = True
+            if duration is None:
+                second = index
+            elif len(series) > 1:
+                second = index * duration / (len(series) - 1)
             else:
-                elapsed = index
-        try:
-            sec = float(elapsed)
-        except (ValueError, TypeError):
+                second = duration / 2
+        if not math.isfinite(second) or second < -1 or second > 86400:
+            skipped_time += 1
             continue
-        if not math.isfinite(sec) or not 0 <= sec <= 24 * 60 * 60:
+        sec = int(round(max(0, second)))
+        # Actual readings outside the activity aren't moved into its window.
+        if duration is not None and sec > duration + 1:
+            skipped_time += 1
             continue
-        samples[int(round(sec))] = bpm
-    # Retain actual Speediance server statistics when present. A set maximum
-    # is not a sample and must never be used to synthesize a graph.
+        samples[sec] = bpm
+
     summary = {}
     if isinstance(data, dict):
         for source, target in (("minHeartRate", "min"),
@@ -210,9 +300,11 @@ def graph_details(data, duration_seconds=None):
     return {
         "points": sorted(samples.items()),
         "summary": summary,
-        "timing_estimated": estimates,
+        "timing_estimated": rebased,
+        "time_mode": mode,
+        "skipped_time_points": skipped_time,
         "series_format": series_format,
-        "raw_sample_count": count,
+        "raw_sample_count": len(series),
     }
 
 

@@ -90,21 +90,29 @@ def all_options(language="de"):
     shortcuts are search keywords, not duplicate picker rows.
     """
     from i18n import translate
+    from garmin_localization import german_exercise_name, english_exercise_name
     aliases = {}
     for friendly, pair in GARMIN_OPTIONS.items():
-        aliases.setdefault(pair, []).extend((friendly, translate(language, friendly)))
+        # Search in either language, independent of selected display language.
+        aliases.setdefault(pair, []).extend(
+            (friendly, translate("en", friendly), translate("de", friendly))
+        )
     results = []
-    existing_labels = set()
     for category_key, exercise_key, cat, sub in FULL_CATALOG:
-        english_name = exercise_key.replace("_", " ").title()
+        english_name = english_exercise_name(exercise_key)
+        german_name = german_exercise_name(exercise_key, cat, sub)
         cname = category_title(cat, language)
-        display = "%s  ·  %s" % (english_name, cname)
-        if display in existing_labels:
-            display += " (%d/%d)" % (cat, sub)
-        existing_labels.add(display)
-        haystack = normalize_query("%s %s %s %s %s" % (
-            english_name, cname, category_title(cat, "de"),
-            category_key, " ".join(aliases.get((cat, sub), []))))
+        # Keep the Garmin English original visible in German mode to avoid
+        # losing precise distinctions from any imperfect translation.
+        primary = german_name if language == "de" else english_name
+        visible = ("%s (%s)" % (primary, english_name)
+                   if language == "de" and primary.casefold() != english_name.casefold()
+                   else primary)
+        display = "%s  ·  %s" % (visible, cname)
+        haystack = normalize_query("%s %s %s %s %s %s" % (
+            english_name, german_name, category_title(cat, "en"),
+            category_title(cat, "de"), category_key,
+            " ".join(aliases.get((cat, sub), []))))
         results.append((display, cat, sub, haystack))
     return tuple(sorted(results, key=lambda x: (normalize_query(x[0]), x[1], x[2])))
 

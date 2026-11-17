@@ -109,30 +109,3 @@ def find_hr_sensor(payload):
         return None
 
     return walk(payload, 0)
-
-
-def user_confirmed_sensor(display_name):
-    """Create FIT sensor label from explicit user input, not inferred telemetry.
-
-    In screenshots Speediance displays HRM600:654360; the suffix may be an
-    ANT+ device number but is *not* necessarily the serial number. Keep it as
-    a descriptor only and do not populate serial_number/product enums.
-    """
-    raw = _clean_name(display_name)
-    if not raw:
-        return None
-    if re.fullmatch(r"HRM\s*600(?::\d{1,10})?", raw, re.IGNORECASE):
-        return {
-            "name": "Garmin HRM 600",
-            "descriptor": raw,
-            "manufacturer": "Garmin",
-            "protocol": None,
-            "verified_from": "user_confirmed",
-        }
-    return {
-        "name": raw,
-        "descriptor": raw,
-        "manufacturer": ("Garmin" if raw.casefold().startswith("garmin ") else None),
-        "protocol": None,
-        "verified_from": "user_confirmed",
-    }

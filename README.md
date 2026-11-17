@@ -1,4 +1,4 @@
-# Speediance FIT Exporter (Beta 0.1.12)
+# Speediance FIT Exporter (Beta 0.1.13)
 
 Lokale Windows-10/11-Anwendung zum Abruf abgeschlossener Speediance-Trainingseinheiten aus dem eigenen Account und zum Export als Garmin-FIT-Aktivitäten. Die Speediance-API ist **inoffiziell**; der Login ist ohne echten Testaccount nicht verifiziert.
 
@@ -122,6 +122,21 @@ Im **Übungen zuordnen…**-Fenster befindet sich jetzt oben rechts eine separat
 - Die technischen FIT-Felder **Kategorie / ID** werden weiter automatisch gesetzt; die manuelle Eingabe bleibt nur im Expertenmodus möglich.
 - **Deutsch / English** werden für Button, Hinweise und Bestätigung unterstützt. Eine offene Zuordnung bleibt beim Wechsel der Katalogsprache erhalten.
 - Die gespeicherten Zuordnungen werden beim nächsten FIT-Export berücksichtigt. Bereits in Garmin Connect importierte Aktivitäten ändern sich dadurch nicht.
+
+## 0.1.13 – Herzfrequenz und Gesamtgewicht bei zwei Griffen
+
+**Herzfrequenz:** Wenn eine Speediance-Trainingseinheit eine Aufzeichnungs-UUID enthält, fragt die Anwendung mit der **bereits angemeldeten Bike-/Nano-Sitzung** den schreibgeschützten Endpunkt `/api/app/watchMsg/getHeartRateGraph?uuid=...` ab. Von Speediance tatsächlich gelieferte Herzfrequenzwerte werden als FIT-`record`-Messpunkte (Feld 3: heart_rate) mitsamt aufgezeichnetem Sekundenoffset exportiert. FIT-`session` enthält daraus Durchschnitt und Maximum; es werden **keine Herzfrequenzwerte interpoliert oder geschätzt**. Leere/ungültige/0-Messungen bleiben ausgelassen. Die Zuordnung der relativen Sekunden erfolgt zum Start der Trainingseinheit – falls die externe Herzfrequenzaufzeichnung zeitversetzt begann, kann sich die Kurve zeitlich verschieben. Die Exportmeldung zeigt die Anzahl der Messpunkte und das anonymisierte Diagnoseprotokoll notiert, ob eine Aufzeichnungs-ID und wie viele Messwerte vorliegen, nicht aber Herzfrequenzwerte oder die ID selbst. Ist kein Graph abrufbar, wird das Training **ohne HF-Daten** exportiert, statt den Export zu blockieren. Der Dienst ist inoffiziell; ein echter Test mit einem gekoppelten Brustgurt steht noch aus.
+
+**Gewicht bei zwei Griffen:** Die bisherigen `trainingInfoDetail.weights` wurden allein verwendet, auch wenn Speediance getrennte `leftWeights` und `rightWeights` liefert. Bei beidseitiger Bewegung verwendet der Exporter jetzt **max(leftWeights) + max(rightWeights)** als Gesamtgewicht; bei einseitiger Bewegung nur die aktive Seite. Das verhindert auch, dass abgeleitete `weights`-Kraftwerte als Widerstand missverstanden werden. Gibt es nur eine Gewichtsangabe, gilt für eindeutig benannte Übungen mit `Dual-Handle`, `Dual-Grip`, `Two-Handle` usw. standardmäßig **×2**, damit 5,5 kg pro Griff als 11 kg Gesamtgewicht nach Garmin gelangen.
+
+**Individuelle Anpassung:** Über **Übungen zuordnen…** links eine Speediance-Übung markieren und unten die Checkbox **„Speediance-Gewicht pro Griff (×2 für Garmin)“** aktivieren oder deaktivieren. Die Einstellung wird sofort lokal gespeichert, ist pro Übung unterschiedlich und in der linken Tabelle als `×1` oder `×2` sichtbar. Eine explizite `×1`-Auswahl verhindert auch die automatische `×2`-Regel. Der Faktor gilt **nur dann**, wenn Speediance keine bereits getrennt auswertbaren Links-/Rechts-Werte liefert. Zwei bereits zusammengezählte Seiten werden niemals erneut verdoppelt. FIT-Export rechnet zusätzlich das eingestellte Anzeigegewicht bei Bedarf von lb nach kg um.
+
+**Deutsch / English:** Die neue Gewichtseinstellung und die Exportmeldung sind zweisprachig.
+
+**Wichtig:** Bereits importierte Garmin-Aktivitäten ändern sich nicht automatisch. Nach Änderung der Gewichtsregel oder zur Übernahme tatsächlich verfügbarer Herzfrequenzdaten muss die FIT-Datei erneut exportiert und in Garmin Connect importiert werden. Der Import kann eine bestehende Aktivität duplizieren.
+
+Referenz für die inoffizielle Speediance-Cloud-API und die Links-/Rechts-Telemetrie:
+https://github.com/labatt/speediance-mcp
 
 ## Windows-Installer
 

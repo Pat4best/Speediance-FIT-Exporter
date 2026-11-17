@@ -1,4 +1,4 @@
-# Speediance FIT Exporter (Beta 0.1.10)
+# Speediance FIT Exporter (Beta 0.1.11)
 
 Lokale Windows-10/11-Anwendung zum Abruf abgeschlossener Speediance-Trainingseinheiten aus dem eigenen Account und zum Export als Garmin-FIT-Aktivitäten. Die Speediance-API ist **inoffiziell**; der Login ist ohne echten Testaccount nicht verifiziert.
 
@@ -102,6 +102,15 @@ Die numerischen Felder sind standardmäßig nur lesbar. Über **IDs manuell bear
 Zusätzlich werden jetzt Speediance-Übungen, deren **englischer Name exakt und eindeutig** einem Garmin-FIT-Namen entspricht (z. B. `Barbell Bench Press` oder `Biceps Stretch`), automatisch zugeordnet. Individuell gespeicherte Zuordnungen haben Vorrang. Die übrigen Speediance-Namen bleiben zunächst unbekannt, bis sie bewusst einer Garmin-Übung zugeordnet werden. Nicht jede Speediance-Bewegung existiert als eigene Garmin-Unterkategorie; Garmin Connect kann außerdem eigene Anzeige-/Importregeln verwenden.
 
 Der Datenkatalog basiert auf öffentlich verfügbaren Garmin-FIT-SDK-Enumwerten und enthält keine vom SDK kopierte Programmlogik. Quelle: https://github.com/garmin/fit-java-sdk (siehe dort geltende FIT-Protokoll-Lizenz).
+
+## 0.1.11 – Zweisprachiger Garmin-Übungskatalog (DE / EN)
+
+Im **Übungen zuordnen…**-Fenster befindet sich jetzt oben rechts eine separate Auswahl **Katalogsprache: Deutsch / English**. Standardmäßig übernimmt sie beim ersten Öffnen die Sprache der Hauptanwendung. Danach merkt sie sich die eigene Auswahl in `%LOCALAPPDATA%\\SpeedianceFITExporter\\settings.json` als `catalog_language` – unabhängig von der Hauptsprache. Die Änderung wirkt sofort ohne erneutes Laden der Trainingseinheiten; markierte Speediance-Übung, eingegebene Suchbegriffe, Kategorienfilter und noch nicht gespeicherte FIT-Codes bleiben erhalten.
+
+- **Deutsch:** Zeigt deutsche Übungsnamen, soweit verfügbar (teilweise durch eine konservative Wortübersetzung), und daneben in Klammern den **originalen englischen Garmin-Namen** zur eindeutigen Zuordnung.
+- **English:** Zeigt die **englischen Originalnamen** des Garmin-FIT-Profils.
+- **Suche:** Unabhängig von der Anzeigesprache werden sowohl deutsche als auch englische Begriffe gefunden, z. B. `Langhantel` und `barbell` oder `Kreuzheben` und `deadlift`. Beide Sprachen verwenden unveränderte Garmin-Kategorie- und Unterkategorie-IDs. Alle 1.838 vorhandenen Garmin-Enumwerte bleiben erhalten und erscheinen nicht doppelt.
+- **Wichtig:** Nicht jede der 1.838 Übungen hat eine redaktionell geprüfte deutsche Übersetzung. Unbekannte Fachbegriffe bleiben bewusst im englischen Original; die englische Bezeichnung dient zur Gegenprüfung. Das beeinflusst nicht die exportierten FIT-Codes.
 
 ## Windows-Installer
 

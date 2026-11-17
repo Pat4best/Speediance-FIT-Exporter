@@ -242,39 +242,39 @@ class App(tk.Tk):
             self.password.set(password)
             self.region.set(region)
             self.save_login_var.set(True)
-            self.login_status.set("● Nicht angemeldet – Zugangsdaten vorausgefüllt")
-            self.status.set("Gespeicherte Anmeldung geladen. Zum Verbinden auf Anmelden klicken.")
+            self.login_status.set(self.tr("● Nicht angemeldet – Zugangsdaten vorausgefüllt"))
+            self.status.set(self.tr("Gespeicherte Anmeldung geladen. Zum Verbinden auf Anmelden klicken."))
 
     def clear_saved_login(self):
-        if not messagebox.askyesno("Anmeldedaten löschen",
-                                   "Gespeicherte Speediance-Zugangsdaten von diesem PC löschen?"):
+        if not messagebox.askyesno(self.tr("Anmeldedaten löschen"),
+                                   self.tr("Gespeicherte Speediance-Zugangsdaten von diesem PC löschen?")):
             return
         try:
             delete_login()
         except Exception as exc:
             logger.warning("Windows credential deletion failed: %s", type(exc).__name__)
-            messagebox.showerror("Anmeldedaten", "Löschen im Windows-Anmeldeinformationsmanager fehlgeschlagen.")
+            messagebox.showerror(self.tr("Anmeldedaten"), self.tr("Löschen im Windows-Anmeldeinformationsmanager fehlgeschlagen."))
             return
         self.email.set("")
         self.password.set("")
         self.save_login_var.set(False)
-        self.login_status.set("● Angemeldet" if self.client is not None else "● Nicht angemeldet")
-        self.status.set("Gespeicherte Anmeldung gelöscht. Bestehende Sitzung bleibt angemeldet.")
+        self.login_status.set(self.tr("● Angemeldet") if self.client is not None else self.tr("● Nicht angemeldet"))
+        self.status.set(self.tr("Gespeicherte Anmeldung gelöscht. Bestehende Sitzung bleibt angemeldet."))
 
     def choose_export_dir(self):
         current = self.export_dir.get()
         initial = current if current and Path(current).is_dir() else str(Path.home())
-        folder = filedialog.askdirectory(title="Exportordner auswählen", initialdir=initial)
+        folder = filedialog.askdirectory(title=self.tr("Exportordner auswählen"), initialdir=initial)
         if not folder:
             return None
         try:
             save_export_folder(folder)
         except (ValueError, OSError) as exc:
             logger.warning("Export directory preferences failed: %s", type(exc).__name__)
-            messagebox.showerror("Exportordner", "Ordner konnte nicht gespeichert werden.")
+            messagebox.showerror(self.tr("Exportordner"), self.tr("Ordner konnte nicht gespeichert werden."))
             return None
         self.export_dir.set(folder)
-        self.status.set("Exportordner gespeichert.")
+        self.status.set(self.tr("Exportordner gespeichert."))
         return folder
 
     def manage_mappings(self):
@@ -298,7 +298,7 @@ class App(tk.Tk):
                 )
             return
         if self.client is None:
-            messagebox.showinfo("Speediance-Anmeldung", "Bitte zuerst anmelden.")
+            messagebox.showinfo(self.tr("Speediance-Anmeldung"), "Bitte zuerst anmelden.")
             return
         selected = [self.sessions[i] for i in indices]
 
@@ -342,7 +342,7 @@ class App(tk.Tk):
         if self.busy:
             return
         self.busy = True
-        self.status.set("Arbeite …")
+        self.status.set(self.tr("Arbeite …"))
         for button in (self.login_button, self.fetch_button, self.export_button, self.mapping_button):
             button.state(["disabled"])
 
@@ -372,7 +372,7 @@ class App(tk.Tk):
                     if self.login_status.get().startswith("● Anmeldung läuft"):
                         self.login_status.set("● Nicht angemeldet – Anmeldung fehlgeschlagen")
                         self.login_status_label.configure(foreground="#9a3412")
-                    messagebox.showerror("Fehler", callback)
+                    messagebox.showerror(self.tr("Fehler"), callback)
         except queue.Empty:
             pass
         self.after(100, self.poll)
@@ -381,7 +381,7 @@ class App(tk.Tk):
         email = self.email.get().strip()
         password = self.password.get()
         if not email or not password:
-            messagebox.showinfo("Anmeldung", "Bitte E-Mail und Passwort eingeben.")
+            messagebox.showinfo(self.tr("Anmeldung"), "Bitte E-Mail und Passwort eingeben.")
             return
         region = self.region.get()
         login_slot = self.login_client_type.get()
@@ -430,7 +430,7 @@ class App(tk.Tk):
 
     def fetch(self):
         if self.client is None:
-            messagebox.showinfo("Anmeldung", "Bitte zuerst anmelden.")
+            messagebox.showinfo(self.tr("Anmeldung"), "Bitte zuerst anmelden.")
             return
         try:
             start = date.fromisoformat(self.from_date.get())
@@ -438,7 +438,7 @@ class App(tk.Tk):
             if end < start or (end - start).days > 366 * 3:
                 raise ValueError()
         except ValueError:
-            messagebox.showerror("Datum", "Bitte gültigen Zeitraum bis zu 3 Jahren wählen.")
+            messagebox.showerror(self.tr("Datum"), "Bitte gültigen Zeitraum bis zu 3 Jahren wählen.")
             return
 
         def done(items):
@@ -461,7 +461,7 @@ class App(tk.Tk):
     def export(self):
         indices = [int(i) for i in self.table.selection()]
         if not indices:
-            messagebox.showinfo("Auswahl", "Bitte mindestens ein Workout markieren.")
+            messagebox.showinfo(self.tr("Auswahl"), "Bitte mindestens ein Workout markieren.")
             return
         folder = self.export_dir.get()
         if not folder or not Path(folder).is_dir():
@@ -509,7 +509,7 @@ class App(tk.Tk):
             if missing_details:
                 message += ("\n%d Trainingseinheiten ohne Speediance-Satzdaten "
                             "wurden NICHT als leere FIT-Aktivitäten exportiert.") % missing_details
-            messagebox.showinfo("Export", message)
+            messagebox.showinfo(self.tr("Export"), message)
 
         self.run_job(job, done)
 
@@ -521,13 +521,13 @@ class App(tk.Tk):
         if target:
             handler.flush()
             shutil.copyfile(LOG, target)
-            messagebox.showinfo("Diagnose", "Gespeichert. Bitte vor Weitergabe selbst prüfen.")
+            messagebox.showinfo(self.tr("Diagnose"), "Gespeichert. Bitte vor Weitergabe selbst prüfen.")
 
     def open_log_dir(self):
         try:
             os.startfile(str(DATA))
         except OSError:
-            messagebox.showinfo("Diagnose", str(DATA))
+            messagebox.showinfo(self.tr("Diagnose"), str(DATA))
 
 
 if __name__ == "__main__":

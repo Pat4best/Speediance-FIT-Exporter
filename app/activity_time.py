@@ -27,7 +27,10 @@ def activity_bounds(workout):
         for s in (exercise.get("sets") or [])
     ]
     measured_seconds = sum(max(0, int(float(s.get("seconds") or 0))) for s in sets)
-    configured_seconds = int(float(workout.get("duration_min") or 0) * 60)
+    configured_seconds = int(round(float(
+        workout.get("duration_seconds") or
+        float(workout.get("duration_min") or 0) * 60
+    )))
     duration = max(60, configured_seconds, measured_seconds, len(sets))
     start = _parse_datetime(workout.get("started_at"))
     if start is None:

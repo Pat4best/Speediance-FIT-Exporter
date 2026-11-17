@@ -8,6 +8,9 @@ import webbrowser
 
 from fitwriter import write_fit
 from garmin_fit_overlay import overlay_garmin_fit, GarminOverlayError
+from garmin_local_fit import (
+    read_local_garmin_fit, match_local_garmin_fit, LocalGarminFitError,
+)
 from garmin_merge import PRIORITY_LABELS, check_priorities
 from garmin_personal import GarminPersonalClient, GarminPersonalError, match_activities
 from preferences import (saved_mappings, saved_weight_multipliers,
@@ -27,6 +30,8 @@ class GarminMergeDialog(tk.Toplevel):
         self.detail = None
         self.candidates = []
         self.garmin_client = None
+        self.local_fit_bytes = None
+        self.source_verified = None
         self.title(app.tr("Garmin Personal API – Abgleich und FIT-Merge"))
         self.transient(app)
         w = min(790, max(600, app.winfo_screenwidth() - 80))
@@ -46,6 +51,7 @@ class GarminMergeDialog(tk.Toplevel):
             )
             return
         self.garmin_client = None
+        self.local_fit_bytes = None
         self.key.set("")
         self.destroy()
 
@@ -61,9 +67,20 @@ class GarminMergeDialog(tk.Toplevel):
             "Krafttrainingssätze werden ergänzt. Online bleibt alles unverändert."
         ), wraplength=745).pack(anchor="w", pady=(3, 10))
 
-        credentials = ttk.LabelFrame(outer, text=tr("1 – Persönlicher Garmin-API-Schlüssel"),
+        credentials = ttk.LabelFrame(outer, text=tr("1 – Garmin-FIT-Quelle auswählen"),
                                      padding=8)
         credentials.pack(fill="x")
+        self.source_choice = tk.StringVar(value="api")
+        choices = ttk.Frame(credentials)
+        choices.pack(fill="x", pady=(0, 6))
+        ttk.Radiobutton(
+            choices, text=tr("Garmin Personal API"), value="api",
+            variable=self.source_choice, command=self._source_changed,
+        ).pack(side="left")
+        ttk.Radiobutton(
+            choices, text=tr("Lokale Garmin-FIT-Datei"), value="file",
+            variable=self.source_choice, command=self._source_changed,
+        ).pack(side="left", padx=(24, 0))
         try:
             stored = load_garmin_api_key()
         except (OSError, RuntimeError, UnicodeError):
@@ -80,6 +97,14 @@ class GarminMergeDialog(tk.Toplevel):
             credentials, text=tr("Garmin-Schlüssel geschützt auf diesem PC speichern"),
             variable=self.remember_key,
         ).pack(anchor="w", pady=(5, 0))
+        self.local_file_path = tk.StringVar(value="")
+        file_line = ttk.Frame(credentials)
+        file_line.pack(fill="x", pady=(7, 0))
+        ttk.Entry(file_line, textvariable=self.local_file_path,
+                  width=63, state="readonly").pack(
+            side="left", fill="x", expand=True, padx=(0, 8))
+        ttk.Button(file_line, text=tr("FIT-Datei wählen…"),
+                   command=self._pick_local_fit).pack(side="right")
 
         priority_frame = ttk.LabelFrame(outer, text=tr("2 – Datenpriorität festlegen"),
                                         padding=8)
@@ -109,7 +134,8 @@ class GarminMergeDialog(tk.Toplevel):
         search_row = ttk.Frame(matched)
         search_row.pack(fill="x")
         self.search_button = ttk.Button(
-            search_row, text=tr("Garmin-Aktivitäten suchen"), command=self.search)
+            search_row, text=tr("Garmin-Aktivitäten suchen / FIT prüfen"),
+            command=self.search)
         self.search_button.pack(side="left")
         self.search_status = tk.StringVar(value=tr("Noch keine Suche durchgeführt."))
         ttk.Label(search_row, textvariable=self.search_status,
@@ -141,9 +167,105 @@ class GarminMergeDialog(tk.Toplevel):
         }
         return check_priorities(data)
 
+    def _reset_search(self):
+        self.detail = None
+        self.candidates = []
+        self.garmin_client = None
+        self.local_fit_bytes = None
+        self.source_verified = None
+        self.match_combo["values"] = ()
+        self.match_combo.set("")
+        self.merge_button.state(["disabled"])
+        self.search_status.set(self.app.tr("Quelle noch nicht überprüft."))
+
+    def _source_changed(self):
+        if not self.app.busy:
+            self._reset_search()
+
+    def _pick_local_fit(self):
+        if self.app.busy:
+            return
+        selected = filedialog.askopenfilename(
+            parent=self,
+            title=self.app.tr("Originale Garmin-FIT-Datei wählen"),
+            filetypes=[("FIT-Aktivitäten", "*.fit")],
+        )
+        if selected:
+            self.local_file_path.set(selected)
+            self.source_choice.set("file")
+            self._reset_search()
+
+    def _show_matches(self, candidates, source_name):
+        self.candidates = candidates
+        if not candidates:
+            self.search_status.set(
+                self.app.tr("Keine zeitlich passende Garmin-Aktivität gefunden.")
+            )
+            messagebox.showinfo(
+                self.app.tr("Kein eindeutiger Treffer"),
+                self.app.tr("Keine Garmin-Aktivität passt zeitlich ausreichend. "
+                            "Es wurde keine FIT-Datei erstellt."),
+                parent=self,
+            )
+            return
+        values = []
+        for candidate in candidates:
+            stamp = candidate["start"].replace("T", " ")[:19]
+            minutes = round(candidate["start_delta_sec"] / 60, 1)
+            values.append("%s | %s | Δ %.1f min" % (
+                stamp, candidate["name"], minutes
+            ))
+        self.match_combo["values"] = values
+        self.search_status.set(
+            self.app.tr("%d mögliche Garmin-Aktivität(en). Bitte eine auswählen.") %
+            len(values)
+        )
+        if len(values) == 1:
+            self.match_combo.current(0)
+        self.source_verified = source_name
+        self.merge_button.state(["!disabled"])
+
     def search(self):
         if self.app.busy:
             return
+        source = self.source_choice.get()
+        # Validation happens without calling Speediance.detail(). Searching
+        # Garmin does not depend on whether Speediance currently allows the
+        # completed-set endpoint.
+        if source == "file":
+            candidate_path = self.local_file_path.get()
+            if not candidate_path:
+                self._pick_local_fit()
+                candidate_path = self.local_file_path.get()
+            if not candidate_path:
+                return
+            self._reset_search()
+            self.search_status.set(self.app.tr("FIT-Datei wird geprüft …"))
+
+            def job():
+                content, _digest, metrics = read_local_garmin_fit(candidate_path)
+                match = match_local_garmin_fit(self.workout, metrics)
+                candidate = {
+                    "name": self.app.tr("Lokale Garmin-FIT"),
+                    "start": match["start"].isoformat(),
+                    "start_delta_sec": match["start_delta_seconds"],
+                    "duration_sec": match["garmin_duration_seconds"],
+                }
+                return content, candidate
+
+            def done(result):
+                content, candidate = result
+                self.local_fit_bytes = content
+                self._show_matches([candidate], "file")
+                logger.info(
+                    "Local Garmin FIT validated: source=file records=unknown "
+                    "start_delta_sec=%d",
+                    candidate["start_delta_sec"],
+                )
+
+            self.app.run_job(job, done)
+            return
+
         key = self.key.get().strip()
         if not key:
             messagebox.showinfo(
@@ -164,56 +286,29 @@ class GarminMergeDialog(tk.Toplevel):
                 parent=self,
             )
             return
-        self.garmin_client = GarminPersonalClient(key)
+        self._reset_search()
+        client = GarminPersonalClient(key)
         self.key.set("")
-        self.detail = None
-        self.candidates = []
-        self.match_combo["values"] = ()
-        self.match_combo.set("")
-        self.merge_button.state(["disabled"])
+        self.garmin_client = client
         self.search_status.set(self.app.tr("Suche läuft …"))
-        selected = self.workout
-        client = self.garmin_client
 
         def job():
-            # Get actual completed sets before matching session duration.
-            detailed = self.app.client.detail(selected)
-            day = date.fromisoformat(str(selected["day"])[:10])
+            day = date.fromisoformat(str(self.workout["day"])[:10])
             rows = client.activities(day - timedelta(days=1),
                                      day + timedelta(days=1))
-            return detailed, match_activities(detailed, rows)
+            return match_activities(self.workout, rows)
 
-        def done(result):
-            self.detail, self.candidates = result
-            if not self.candidates:
-                self.search_status.set(self.app.tr("Keine zeitlich passende Garmin-Aktivität gefunden."))
-                messagebox.showinfo(
-                    self.app.tr("Kein eindeutiger Treffer"),
-                    self.app.tr("Keine Garmin-Aktivität passt zeitlich ausreichend. "
-                                "Es wurde keine FIT-Datei erstellt."),
-                    parent=self,
-                )
-                return
-            values = []
-            for candidate in self.candidates:
-                stamp = candidate["start"].replace("T", " ")[:19]
-                minutes = round(candidate["start_delta_sec"] / 60, 1)
-                values.append("%s | %s | Δ %.1f min" % (
-                    stamp, candidate["name"], minutes
-                ))
-            self.match_combo["values"] = values
-            self.search_status.set(
-                self.app.tr("%d mögliche Garmin-Aktivität(en). Bitte eine auswählen.") %
-                len(values)
-            )
-            if len(values) == 1:
-                self.match_combo.current(0)
-            self.merge_button.state(["!disabled"])
+        def done(candidates):
+            self._show_matches(candidates, "api")
 
         self.app.run_job(job, done)
 
     def save_merge(self):
-        if self.app.busy or self.detail is None or self.garmin_client is None:
+        if self.app.busy or self.source_verified != self.source_choice.get():
+            return
+        if self.source_verified == "file" and self.local_fit_bytes is None:
+            return
+        if self.source_verified == "api" and self.garmin_client is None:
             return
         selected = self.match_combo.current()
         if selected < 0 or selected >= len(self.candidates):
@@ -246,10 +341,17 @@ class GarminMergeDialog(tk.Toplevel):
         path = Path(target)
         candidate = self.candidates[selected]
         client = self.garmin_client
-        detail = self.detail
+        local_fit = self.local_fit_bytes
+        source = self.source_verified
 
         def job():
-            fit = client.download_activity_fit(candidate["id"])
+            # The selected original Garmin FIT is validated before this call.
+            # Speediance still needs to return the actually performed sets.
+            # An unavailable Speediance detail endpoint is diagnosed separately
+            # and never triggers a Garmin authentication request.
+            detail = self.detail or self.app.client.detail(self.workout)
+            fit = (local_fit if source == "file"
+                   else client.download_activity_fit(candidate["id"]))
             result, meta = overlay_garmin_fit(
                 fit, detail, path, priority,
                 overrides=saved_mappings(),

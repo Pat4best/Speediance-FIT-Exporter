@@ -214,7 +214,8 @@ def _rebuild(original, stream):
 
 
 def overlay_garmin_fit(original, speediance, destination, priorities=None,
-                       overrides=None, weight_overrides=None):
+                       overrides=None, weight_overrides=None,
+                       speediance_fit_bytes=None):
     """Use the Garmin FIT as binary base, supplement with Speediance sets.
 
     FIT manufacturer in the new *file_id* is DEVELOPMENT, with a stable,
@@ -235,14 +236,18 @@ def overlay_garmin_fit(original, speediance, destination, priorities=None,
         start_ts + int(elapsed): int(bpm)
         for elapsed, bpm in merged["heart_rate_points"]
     }
-    # Canonical Speediance SET fields come from the existing, tested writer;
-    # no competing weight calculation is introduced in the Garmin overlay.
-    with TemporaryDirectory(prefix="speediance-merge-") as folder:
-        temp_path = write_fit(
-            merged, Path(folder) / "speediance-sets.fit",
-            overrides=overrides, weight_overrides=weight_overrides,
-        )
-        generated = parse_fit_wire(temp_path.read_bytes())
+    # Canonical Speediance SET fields come from the tested FIT writer,
+    # or, on a transient API outage, the user's earlier direct Speediance FIT.
+    # In the latter case retain the original SET messages byte-for-byte.
+    if speediance_fit_bytes is not None:
+        generated = parse_fit_wire(speediance_fit_bytes)
+    else:
+        with TemporaryDirectory(prefix="speediance-merge-") as folder:
+            temp_path = write_fit(
+                merged, Path(folder) / "speediance-sets.fit",
+                overrides=overrides, weight_overrides=weight_overrides,
+            )
+            generated = parse_fit_wire(temp_path.read_bytes())
         new_strength = [_from_message(entry)
                         for entry in generated if entry["kind"] == "data"
                         and entry["global"] in (225, 264)]
@@ -416,5 +421,7 @@ def overlay_garmin_fit(original, speediance, destination, priorities=None,
         "patched_hr_records": patched_hr,
         "output_bytes": len(result),
         "file_id_changed": True,
+        "speediance_source": ("saved_fit" if speediance_fit_bytes is not None
+                             else "cloud"),
     })
     return target, meta

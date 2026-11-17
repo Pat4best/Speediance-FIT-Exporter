@@ -9,7 +9,8 @@ import urllib.error
 import urllib.request
 from urllib.parse import quote
 
-from heart_rate import graph_points
+from heart_rate import graph_details, valid_bpm
+from hr_sensor import find_hr_sensor
 from weight_handling import set_weight
 
 HOSTS = {"EU": "euapi.speediance.com", "Global": "api2.speediance.com"}
@@ -300,6 +301,11 @@ class Client:
                     stat["outside"] += 1
                     continue
                 if tid in items:
+                    # Calendar lacks watchType and optional sensor metadata.
+                    items[tid]["watch_type"] = record.get("watchType") or 0
+                    sensor = find_hr_sensor(record)
+                    if sensor:
+                        items[tid]["hr_sensor"] = sensor
                     stat["duplicates"] += 1
                     continue
                 try:
@@ -325,6 +331,8 @@ class Client:
                     "unit": self.unit,
                     "device_type": self.device,
                     "source": "history",
+                    "watch_type": record.get("watchType") or 0,
+                    "hr_sensor": find_hr_sensor(record),
                 }
                 stat["added"] += 1
             self.history_added = stat["added"]
@@ -355,17 +363,17 @@ class Client:
         self.logger.info("Fetching session details using up to %d routes", len(routes))
         raw = []
         recording_uuid = None
+        sensor_detail = None
         for route in routes:
             candidate = self.request(
                 "/api/app/trainingInfo/%s/%d" % (route, workout["training_id"]),
                 allow_error=True,
             )
+            candidate_sensor = find_hr_sensor(candidate)
+            candidate_uuid = (candidate.get("uuid") if isinstance(candidate, dict) else None)
             if isinstance(candidate, dict):
                 # Free Lift and other variant APIs can carry a session UUID
                 # on the response wrapper.
-                candidate_uuid = candidate.get("uuid")
-                if candidate_uuid and isinstance(candidate_uuid, str):
-                    recording_uuid = candidate_uuid
                 candidate = next((candidate[key] for key in (
                     "list", "records", "data", "trainingInfoDetailList", "exerciseList")
                     if isinstance(candidate.get(key), list)), [])
@@ -375,6 +383,8 @@ class Client:
                 isinstance(ex, dict) and ex.get("finishedReps") for ex in candidate
             ):
                 raw = candidate
+                sensor_detail = candidate_sensor or find_hr_sensor(candidate)
+                recording_uuid = candidate_uuid if isinstance(candidate_uuid, str) else None
                 break
             self.logger.info("Detail endpoint returned no completed sets; trying fallback")
         if not isinstance(raw, list) or not raw:
@@ -399,29 +409,55 @@ class Client:
         self.logger.info("Loaded %d exercises and %d sets", len(exercises), count)
         if not count:
             raise APIError("Speediance hat für dieses Training keine Sätze geliefert")
-        # Set-level peaks are useful to diagnose whether the machine recorded
-        # a connected HR sensor even if no full graph is available. Do not
-        # fabricate second-by-second values from a per-set maximum.
-        peaks = sum(
-            1 for ex in raw for row in (ex.get("finishedReps") or [])
-            if isinstance(row, dict) and row.get("maxHeartRate")
-        )
-        self.logger.info("Heart-rate: %d sets with measured peaks", peaks)
+        # A per-set maximum is a real measurement. It can form a true
+        # maximum summary but never an average or synthetic sample series.
+        peaks = [
+            bpm for ex in raw for row in (ex.get("finishedReps") or [])
+            if isinstance(row, dict)
+            for bpm in [valid_bpm(row.get("maxHeartRate"))]
+            if bpm is not None
+        ]
+        self.logger.info("Heart-rate: %d sets with measured peaks", len(peaks))
         heart_points = []
+        summary = {"max": max(peaks)} if peaks else {}
+        timing_estimated = False
+        sensor = sensor_detail or workout.get("hr_sensor")
+        self.logger.info("Heart-rate sensor model exposed by Speediance: %s",
+                         "yes" if sensor else "no")
         if recording_uuid:
             # Read-only cloud request with existing Bike/Nano session.
-            # Do not log the UUID, response or any heart-rate measurement.
+            # Never log UUID, raw graph, exact sensor name or pulse values.
             try:
                 graph = self.request(
                     "/api/app/watchMsg/getHeartRateGraph?uuid=%s" %
                     quote(recording_uuid, safe=""),
                     allow_error=True,
                 )
-                heart_points = graph_points(graph)
-            except APIError:
-                # Heart-rate data is optional; do not fail strength export.
+                parsed = graph_details(
+                    graph, duration_seconds=float(workout.get("duration_min") or 0) * 60
+                )
+                heart_points = parsed["points"]
+                timing_estimated = parsed["timing_estimated"]
+                summary.update(parsed["summary"])
+                if peaks:
+                    summary["max"] = max(peaks + ([summary["max"]] if "max" in summary else []))
+                sensor = sensor or find_hr_sensor(graph)
+                self.logger.info(
+                    "Heart-rate graph: %d measured samples; format=%s "
+                    "raw_samples=%d estimated_timing=%s; summary=%s",
+                    len(heart_points), parsed["series_format"],
+                    parsed["raw_sample_count"], timing_estimated,
+                    "yes" if parsed["summary"] else "no"
+                )
+            except (APIError, ValueError, TypeError):
+                # Optional data must never break the strength export.
                 self.logger.warning("Heart-rate graph request unavailable")
-            self.logger.info("Heart-rate graph: %d measured samples", len(heart_points))
         else:
             self.logger.info("Heart-rate graph unavailable: recording UUID missing")
-        return dict(workout, exercises=exercises, heart_rate_points=heart_points)
+        return dict(
+            workout, exercises=exercises,
+            heart_rate_points=heart_points,
+            heart_rate_summary=summary,
+            heart_rate_timing_estimated=timing_estimated,
+            hr_sensor=sensor,
+        )

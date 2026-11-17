@@ -261,6 +261,12 @@ def overlay_garmin_fit(original, speediance, destination, priorities=None,
         if item["global"] == 20 and item["timestamp"] is not None:
             if _get_numeric(item, 3) is not None:
                 native_times.add(item["timestamp"])
+    # A multisport/multi-session FIT needs session-level matching rather than
+    # one Speediance strength-training block. Never corrupt its other sessions.
+    if original_counts[18] != 1:
+        raise GarminOverlayError(
+            "Nur Garmin-Einzelaktivitäten mit genau einer Sitzung unterstützt"
+        )
     # Exactly one physical HR observation per timestamp; original Garmin
     # records are never duplicated solely to overwrite their HR value.
     speed_only = {
@@ -338,7 +344,9 @@ def overlay_garmin_fit(original, speediance, destination, priorities=None,
             changes = {1: 255, 2: 0, 3: derivative_serial}
         elif num == 18:
             changes = session_changes
-        elif num == 19:
+        elif num == 19 and original_counts[19] == 1:
+            # Multi-lap Garmin summaries are distinct real measurements:
+            # never replace EACH lap's values with whole-session totals.
             changes = {11: calories, 15: summary.get("avg"),
                        16: summary.get("max")}
             if priorities["duration"] == "speediance":

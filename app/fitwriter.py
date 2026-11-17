@@ -8,6 +8,7 @@ from pathlib import Path
 import struct
 
 from exercise_mapping import fit_exercise, UNKNOWN
+from weight_handling import weight_multiplier_for
 
 FIT_EPOCH = datetime(1989, 12, 31, tzinfo=timezone.utc)
 FORMATS = {0: "B", 2: "B", 0x84: "H", 0x86: "I", 0x8C: "I"}
@@ -65,7 +66,7 @@ class Encoder:
         return data + struct.pack("<H", crc(data))
 
 
-def write_fit(workout, destination, overrides=None):
+def write_fit(workout, destination, overrides=None, weight_overrides=None):
     """Create Garmin FIT *activity* (strength training), not a workout plan.
 
     FIT field numbers/scaling follow Garmin FIT Profile: the original exporter
@@ -105,6 +106,7 @@ def write_fit(workout, destination, overrides=None):
     remaining = duration
     mapping_cache = {}
     unknown_names = []
+    events = []  # FIT record and set messages, sorted by timestamp.
     for i, (exercise_name, s) in enumerate(sets):
         if exercise_name not in mapping_cache:
             category, subtype = fit_exercise(exercise_name, overrides=overrides)
@@ -120,9 +122,12 @@ def write_fit(workout, destination, overrides=None):
         cursor += timedelta(seconds=seconds)
         remaining = max(0, remaining - seconds)
         repetitions = max(0, min(65534, int(float(s.get("reps") or 0))))
-        weight_kg = max(0, float(s.get("weight") or 0) * unit_factor)
+        weight = max(0, float(s.get("weight") or 0))
+        multiplier = (1 if s.get("weight_already_total")
+                      else weight_multiplier_for(exercise_name, weight_overrides))
+        weight_kg = weight * multiplier * unit_factor
         weight_scaled = min(65534, round(weight_kg * 16))
-        enc.mesg(225, [
+        events.append((stamp(cursor), 1, 225, [
             (254, 0x86, stamp(cursor)),       # SET timestamp (unlike other messages)
             (0, 0x86, seconds * 1000),        # SET duration; FIT scale 1000
             (3, 0x84, repetitions),
@@ -131,7 +136,32 @@ def write_fit(workout, destination, overrides=None):
             (6, 0x86, set_start),
             (7, 0x84, category),              # Garmin exercise_category
             (8, 0x84, subtype),               # Garmin category_subtype
-        ])
+        ]))
+
+    # The Speediance watch API returns actual per-second samples with elapsed
+    # seconds; 0/invalid values are discarded upstream, never interpolated.
+    heart_points = workout.get("heart_rate_points") or []
+    accepted_hr = []
+    for elapsed_sec, bpm in heart_points:
+        try:
+            sec = int(elapsed_sec)
+            hr = int(bpm)
+        except (ValueError, TypeError):
+            continue
+        if 0 <= sec <= duration and 20 <= hr <= 254:
+            accepted_hr.append(hr)
+            events.append((start_ts + sec, 0, 20, [
+                (253, 0x86, start_ts + sec),  # timestamp
+                (3, 2, hr),                  # measured heart_rate [bpm]
+                (5, 0x86, 0),               # stationary distance
+            ]))
+    for _, _, global_num, fields in sorted(events, key=lambda event: (event[0], event[1])):
+        enc.mesg(global_num, fields)
+
+    hr_stats = ([
+        (16, 2, int(round(sum(accepted_hr) / len(accepted_hr)))),
+        (17, 2, max(accepted_hr)),
+    ] if accepted_hr else [])
 
     # Optional custom titles for movements absent from the Garmin enum.
     # Garmin Connect may ignore these titles in imported ACTIVITY files.
@@ -149,7 +179,7 @@ def write_fit(workout, destination, overrides=None):
         (2, 0x86, start_ts), (7, 0x86, duration_ms),
         (8, 0x86, duration_ms), (9, 0x86, 0),
         (25, 0, 10), (39, 0, 20),
-    ])
+    ] + ([(15, 2, hr_stats[0][2]), (16, 2, hr_stats[1][2])] if hr_stats else []))
     # Sport TRAINING=10; sub_sport STRENGTH_TRAINING=20 (not swimming=5).
     enc.mesg(18, [
         (254, 0x84, 0), (253, 0x86, end_ts), (0, 0, 8), (1, 0, 1),
@@ -157,7 +187,7 @@ def write_fit(workout, destination, overrides=None):
         (7, 0x86, duration_ms), (8, 0x86, duration_ms),
         (9, 0x86, 0), (11, 0x84, calories),
         (25, 0x84, 0), (26, 0x84, 1),
-    ])
+    ] + hr_stats)
     enc.mesg(34, [
         (253, 0x86, end_ts), (0, 0x86, duration_ms), (1, 0x84, 1),
         (2, 0, 0), (3, 0, 26), (4, 0, 1),

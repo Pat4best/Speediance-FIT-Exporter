@@ -302,8 +302,29 @@ def overlay_garmin_fit(original, speediance, destination, priorities=None,
 
     calories = merged.get("calories")
     summary = merged.get("heart_rate_summary") or {}
-    # Only update fields that are deliberately controlled by priority.
+    # The original Garmin strength activity can have a coarse, watch-counted
+    # total_cycles (field 10). We replaced its SETs with Speediance completed
+    # sets, so the session repetition total must not remain at the watch's
+    # old value. For timed/dehn movements completionMethod 0/2, 'reps'
+    # often means seconds and must not be counted as repetitions.
+    actual_reps = 0
+    for exercise in speediance.get("exercises") or []:
+        try:
+            method = exercise.get("completion_method")
+            timed = method is not None and int(method) in (0, 2)
+        except (TypeError, ValueError):
+            timed = False
+        if timed:
+            continue
+        for completed in exercise.get("sets") or []:
+            try:
+                actual_reps += max(0, int(float(completed.get("reps") or 0)))
+            except (TypeError, ValueError, OverflowError):
+                pass
+    actual_reps = min(4294967294, actual_reps)
+    # Only update fields controlled by priority (plus Speediance-owned reps).
     session_changes = {
+        10: actual_reps if actual_reps else None,
         11: calories,
         16: summary.get("avg"),
         17: summary.get("max"),
@@ -349,7 +370,8 @@ def overlay_garmin_fit(original, speediance, destination, priorities=None,
         elif num == 19 and original_counts[19] == 1:
             # Multi-lap Garmin summaries are distinct real measurements:
             # never replace EACH lap's values with whole-session totals.
-            changes = {11: calories, 15: summary.get("avg"),
+            changes = {10: actual_reps if actual_reps else None,
+                       11: calories, 15: summary.get("avg"),
                        16: summary.get("max")}
             if priorities["duration"] == "speediance":
                 changes.update({7: duration * 1000, 8: duration * 1000})
@@ -388,6 +410,7 @@ def overlay_garmin_fit(original, speediance, destination, priorities=None,
         "garmin_preserved_message_types": len(original_counts),
         "garmin_device_info": original_counts[23],
         "new_speediance_sets": expected_strength,
+        "speediance_repetitions": actual_reps,
         "replaced_garmin_sets": native_sets,
         "added_hr_records": len(speed_only),
         "patched_hr_records": patched_hr,

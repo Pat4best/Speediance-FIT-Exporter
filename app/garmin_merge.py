@@ -153,6 +153,11 @@ def merge_workout(speediance, garmin, priorities=None):
     output = dict(speediance)
     output["started_at"] = selected_start.isoformat()
     output["duration_seconds"] = duration
+    # Strength SET messages are positioned on Speediance's original clock,
+    # even if the merged activity begins earlier on the Garmin watch.
+    output["strength_start_offset"] = int(round(
+        speed_start.timestamp() - selected_start.timestamp()
+    ))
     output["duration_min"] = duration / 60
     output["finished_at"] = None
     output["heart_rate_points"] = series
@@ -171,9 +176,10 @@ def merge_workout(speediance, garmin, priorities=None):
         "samples": len(series),
         "garmin_samples": len(garmin_samples),
         "speediance_samples": len(speed_samples),
-        "out_of_window_samples": len(set(garmin_samples) | set(speed_samples))
-                                  - len(set(garmin_samples) | set(speed_samples)
-                                        & set(range(duration + 1))),
+        "out_of_window_samples": sum(
+            not 0 <= sec <= duration
+            for sec in (set(garmin_samples) | set(speed_samples))
+        ),
         "start": selected_start,
         "duration_seconds": duration,
     }

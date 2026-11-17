@@ -54,4 +54,9 @@ def fit_exercise(name, overrides=None):
         if not (0 <= int(cat) <= 65534 and 0 <= int(sub) <= 65534):
             raise ValueError("Invalid exercise mapping")
         return int(cat), int(sub)
-    return EXERCISES.get(norm, (UNKNOWN, None))
+    if norm in EXERCISES:
+        return EXERCISES[norm]
+    # Speediance often uses the exact English names from the Garmin exercise
+    # list; uniquely equal titles can be mapped without a manual override.
+    from garmin_catalog import exact_name_match
+    return exact_name_match(name) or (UNKNOWN, None)

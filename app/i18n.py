@@ -171,6 +171,20 @@ EN = {
     "Links die Speediance-Übung und rechts die Garmin-Übung wählen, dann auf „Zuordnen“ klicken. Die Zuordnung erscheint sofort links.":
         "Select a Speediance exercise on the left and a Garmin exercise on the right, then click Map. The mapping appears on the left immediately.",
     "← Zuordnen": "← Map",
+    "Gewicht": "Weight",
+    "Speediance-Gewicht pro Griff (×2 für Garmin)":
+        "Speediance weight per handle (×2 for Garmin)",
+    "Bei echten Links-/Rechts-Messwerten werden beide Seiten addiert. Die ×2-Regel gilt nur für einzelne Speediance-Gewichtsangaben.":
+        "When left/right resistance samples are available, the sides are added. The ×2 rule applies only to a single reported weight value.",
+    "Gewichtseinstellung konnte nicht gespeichert werden.":
+        "Could not save weight setting.",
+    "Gewichtsfaktor für %s gespeichert: ×%d":
+        "Weight multiplier saved for %s: ×%d",
+    "\nHerzfrequenz: %d echte Messpunkte übertragen.":
+        "\nHeart rate: %d measured samples exported.",
+    "\nGewichte: %d Sätze von pro Griff auf Gesamtgewicht umgerechnet.":
+        "\nWeights: %d sets converted from per-handle to total weight.",
+
     "Rechts eine Garmin-Übung auswählen.":
         "Select a Garmin exercise on the right.",
     "Mit „← Zuordnen“ übernehmen.":

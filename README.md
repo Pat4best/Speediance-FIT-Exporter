@@ -1,4 +1,4 @@
-# Speediance FIT Exporter (Beta 0.1.6)
+# Speediance FIT Exporter (Beta 0.1.8)
 
 Lokale Windows-10/11-Anwendung zum Abruf abgeschlossener Speediance-Trainingseinheiten aus dem eigenen Account und zum Export als Garmin-FIT-Aktivitäten. Die Speediance-API ist **inoffiziell**; der Login ist ohne echten Testaccount nicht verifiziert.
 
@@ -56,6 +56,17 @@ Ab 0.1.6 fragt der Exporter die Monate **lesend** mit beiden bekannten API-Versi
 Für Diagnosezwecke protokolliert die Anwendung ausschließlich anonyme Zählwerte (Monat, Kalender-Version, Anzahl Tage, hinzugefügte und übersprungene Einträge), niemals Trainingstitel, Trainings-IDs, Passwörter oder Sitzungstokens. So kann man bei weiteren Differenzen zum Speediance-Kalender prüfen, welche API-Ansicht Einheiten nicht zurückgibt.
 
 **Wichtig:** Der konkrete Fall „GMC · Mon 16 Nov“ am 16.11.2026 ist mit einer lokalen Testantwort nachgestellt; ob Speediance unter dem echten Account dieselben Daten über die alte Version liefert, muss noch an einem echten Abruf geprüft werden. Falls das Training weiterhin fehlt, bitte das neue anonymisierte Diagnoseprotokoll bereitstellen.
+
+## 0.1.7/0.1.8 – Verbesserte Bedienung und zweisprachige Oberfläche
+
+- **Klarere Loginfehler:** Fehlgeschlagene Anmeldungen zeigen eine verständliche Meldung, etwa dass E-Mail-Adresse, Passwort oder Region geprüft werden sollen. Technische API-Fehlercodes bleiben nur im lokal gespeicherten Diagnoseprotokoll.
+- **Sichtbarer Sitzungsstatus:** Nicht angemeldet / Anmeldung läuft / Angemeldet, einschließlich des verwendeten Speediance-Sitzungstyps (Bike/Nano/Phone).
+- **Reparierte Fensteraufteilung:** Die Export- und Diagnosebuttons sind fest am unteren Fensterrand, während die Trainingsliste den restlichen Platz nutzt. Die Startgröße orientiert sich an der verfügbaren Monitorfläche.
+- **Erweiterte Trainingssuche:** Die Kalenderansichten beider Gerätetypen (Gym Monster und Gym Pal) und beider bekannten API-Versionen werden lesend abgefragt, zusammengeführt und anhand der Trainings-ID dedupliziert. In der Diagnose stehen pro Abfrage nur Anzahl Tage, Einträge, hinzugefügte, doppelte, nicht abgeschlossene und verworfene Einträge. Ein fehlendes Training wird **nicht erfunden oder als abgeschlossen markiert**. Ob das Training vom 16.11. in diesen Antworten enthalten ist, muss anhand des echten Accounts überprüft werden.
+- **Diagnose anzeigen / kopieren:** Das lokale Protokoll kann direkt im Programm angezeigt und in die Zwischenablage kopiert werden. Vor Weitergabe bitte immer selbst prüfen.
+- **Deutsch / English:** Rechts oben im Hauptfenster die Sprache wechseln. Die Auswahl wird in `%LOCALAPPDATA%\\SpeedianceFITExporter\\settings.json` gespeichert und beim nächsten Programmstart wieder geladen. Beim Wechsel bleiben aktuelle Anmeldung, Datumsauswahl, geladene Trainings und Trainingsauswahl erhalten; auch die Übungszuordnung und Standarddialoge sind übersetzt. Die von Speediance gelieferten Original-Übungsnamen bleiben für exakte Garmin-Zuordnungen unverändert.
+
+**Sicherheit:** Die Änderung führt **keine zusätzlichen Anmeldungen** aus. Für den Kalender werden nur bereits bestehende Sitzungen wiederverwendet.
 
 ## Windows-Installer
 

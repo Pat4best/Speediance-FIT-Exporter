@@ -1,5 +1,7 @@
 # Abnahmecheckliste – 0.1.35-rc.2
 
+[English version](../en/rc-checklist.md) · [Dokumentationsübersicht](README.md)
+
 Diese Checkliste dokumentiert die Freigabekriterien für **Release Candidate 2**. Sie enthält keine privaten Zugangsdaten oder FIT-Dateien und darf mit dem RC verteilt werden.
 
 ## Automatisch (GitHub Actions / Windows)

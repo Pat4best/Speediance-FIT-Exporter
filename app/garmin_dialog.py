@@ -371,18 +371,8 @@ class GarminMergeDialog(tk.Toplevel):
         if self.app.busy:
             return
         names = mapping_names_for_merge(self.gm_history_import, observed_names())
-        if not names:
-            messagebox.showinfo(
-                self.app.tr("Übungen zuordnen"),
-                self.app.tr(
-                    "Noch keine Übungsnamen verfügbar. Lade zuerst die "
-                    "GM-Manager-History-CSV oder importiere eine abgeschlossene "
-                    "Trainingseinheit von Speediance. Danach kannst du die "
-                    "Übungen manuell den Garmin-Übungen zuordnen."
-                ),
-                parent=self,
-            )
-            return
+        # The editor already supports "Übungsname hinzufügen…" for entirely
+        # offline manual mapping. Never block opening when the API is empty.
         editor = MappingEditor(self, names=names)
         self.wait_window(editor)
         if self.winfo_exists():

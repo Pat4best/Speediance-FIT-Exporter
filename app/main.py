@@ -18,7 +18,7 @@ from windows_credentials import load_login, save_login, delete_login
 from preferences import export_folder, save_export_folder, saved_mappings, saved_weight_multipliers, remember_names, observed_names, load_login_client_type, save_login_client_type
 from mapping_editor import MappingEditor
 from garmin_dialog import GarminMergeDialog
-from exercise_discovery import discover_names
+from exercise_discovery import discover_names, cached_workout_names
 from preferences import load_language, save_language
 from i18n import translate
 
@@ -314,50 +314,37 @@ class App(tk.Tk):
             MappingEditor(self, names=observed_names())
             return
         selected = [self.sessions[i] for i in indices]
-        if self.client is None:
-            # No network session available; keep manual mapping possible but
-            # never present the global name list as this workout's exercises.
-            MappingEditor(self, names=[])
-            return
-
-        def work():
-            return discover_names(self.client, selected, logger=logger)
-
-        def done(result):
-            names, failures = result
-            if names:
-                try:
-                    remember_names(names)
-                except OSError:
-                    logger.warning("Unable to remember selected exercise names")
-                self.status.set(
-                    self.tr("%d Übungen aus %d gewählten Training(s) geladen.") %
-                    (len(names), len(selected))
-                )
-            else:
-                self.status.set(
-                    self.tr("Für die markierten Trainings wurden keine Übungen geladen.")
-                )
-                messagebox.showwarning(
-                    self.tr("Keine Übungen abrufbar"),
-                    self.tr(
-                        "Für das gewählte Training sind keine abgeschlossenen "
-                        "Übungsdetails verfügbar. Der Zuordnungseditor wird "
-                        "ohne fremde Übungsnamen geöffnet. Du kannst Namen "
-                        "dort manuell hinzufügen."
-                    ),
-                    parent=self,
-                )
-            if failures and names:
-                logger.info(
-                    "Exercise mapping: partial selected-session details, "
-                    "failures=%d", failures
-                )
-            # Explicit names=[] is intentional: MappingEditor must NOT load
-            # observed_names() or any previous GMC workout by default.
-            MappingEditor(self, names=names)
-
-        self.run_job(work, done)
+        names = []
+        seen = set()
+        for workout in selected:
+            # Offline, read-only account+training-scoped cache. The separate
+            # "Übungsnamen von Speediance laden…" button fetches new names.
+            for name in cached_workout_names(self.client, workout):
+                if name.casefold() not in seen:
+                    seen.add(name.casefold())
+                    names.append(name)
+        if names:
+            self.status.set(
+                self.tr("%d Übungen aus %d gewählten Training(s) geladen.") %
+                (len(names), len(selected))
+            )
+        else:
+            self.status.set(
+                self.tr("Für die markierten Trainings wurden keine Übungen geladen.")
+            )
+            messagebox.showinfo(
+                self.tr("Übungen zuordnen"),
+                self.tr(
+                    "Für das gewählte Training sind noch keine abgeschlossenen "
+                    "Übungsdetails lokal gespeichert. Du kannst Namen "
+                    "manuell hinzufügen oder sie über "
+                    "'Übungsnamen von Speediance laden…' abrufen."
+                ),
+                parent=self,
+            )
+        # Explicit names=[] keeps the editor open and prevents old GMC
+        # exercises from being displayed under a different selected workout.
+        MappingEditor(self, names=names)
 
     def discover_mapping_names(self):
         """Optional discovery of new exercise names from selected Speediance workouts.

@@ -1,5 +1,7 @@
 # Checkliste: Öffentliches GitHub-Repository
 
+[English version](../en/publication-checklist.md) · [Dokumentationsübersicht](README.md)
+
 **Projekt:** Speediance FIT Exporter · **Aktueller Status: nicht zur Veröffentlichung freigegeben**  
 **Ziel:** zunächst sicher privat testen, dann nach Rechte-/Sicherheitsprüfung ggf. offen zur gemeinsamen Weiterentwicklung veröffentlichen.
 

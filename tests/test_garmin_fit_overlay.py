@@ -147,6 +147,37 @@ class GarminOverlayTests(unittest.TestCase):
         self.assertNotEqual(derivative_id[4][1], original_id[4][1])
         self.assertEqual(derivative_id[4][1] > original_id[4][1], True)
 
+    def test_direct_cached_four_sets_with_watch_start_95_seconds_later(self):
+        # Regression for the genuine 2026-11-13 workflow: Speediance details
+        # were successfully loaded from an account cache, but the FIT merge
+        # failed afterwards with a generic GarminOverlayError.
+        original = original_garmin_fit()
+        speed = speediance_executed()
+        speed["started_at"] = (GARMIN_START - timedelta(seconds=95)).isoformat()
+        speed["finished_at"] = (GARMIN_START + timedelta(seconds=205)).isoformat()
+        speed["exercises"][0]["sets"] = [
+            {"reps": n, "weight": 20, "seconds": 25,
+             "weight_already_total": True}
+            for n in (8, 9, 10, 11)
+        ]
+        with TemporaryDirectory() as folder:
+            target, meta = overlay_garmin_fit(
+                original, speed, Path(folder) / "cached-direct.fit")
+            result = target.read_bytes()
+        self.assertEqual(meta["new_speediance_sets"], 4)
+        self.assertEqual(meta["set_timing_original_offset_seconds"], -95)
+        self.assertTrue(meta["set_timing_aligned_to_activity_start"])
+        sets = values(result, 225)
+        self.assertEqual(len(sets), 4)
+        self.assertEqual(sets[0][6][1], stamp(GARMIN_START))
+        self.assertEqual([row[3][1] for row in sets], [8, 9, 10, 11])
+        self.assertEqual([row[4][1] / 16 for row in sets],
+                         [20.0, 20.0, 20.0, 20.0])
+        self.assertEqual(all_message_data(original, 20),
+                         all_message_data(result, 20)[:len(all_message_data(original, 20))])
+        self.assertEqual(all_message_data(original, 23),
+                         all_message_data(result, 23))
+
     def test_each_export_has_independent_file_id_but_same_activity_time(self):
         original = original_garmin_fit()
         with TemporaryDirectory() as folder:

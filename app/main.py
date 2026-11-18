@@ -23,7 +23,7 @@ from preferences import load_language, save_language
 from i18n import translate
 
 APP = "Speediance FIT Exporter"
-VERSION = "0.1.32-beta"
+VERSION = "0.1.33-beta"
 DATA = Path(os.environ.get("LOCALAPPDATA", Path.home())) / "SpeedianceFITExporter"
 DATA.mkdir(parents=True, exist_ok=True)
 LOG = DATA / "diagnose.log"
@@ -299,15 +299,65 @@ class App(tk.Tk):
         return folder
 
     def manage_mappings(self):
-        """Open manual mappings independently of Speediance's detail API.
+        """Map *only* exercises from the marked workout(s).
 
-        Known names and overrides are stored on this PC. The editor also
-        allows manually entering a source exercise name when no cloud
-        details or history CSV are available.
+        No selection deliberately displays the full historical mapping pool;
+        selecting a workout instead loads its account-scoped completed-set
+        details, preferring the existing verified cache. Do not silently
+        substitute exercises from another workout if this lookup fails.
+        The editor remains usable with an empty list for manual additions.
         """
         if self.busy:
             return
-        MappingEditor(self, names=observed_names())
+        indices = [int(i) for i in self.table.selection()]
+        if not indices:
+            MappingEditor(self, names=observed_names())
+            return
+        selected = [self.sessions[i] for i in indices]
+        if self.client is None:
+            # No network session available; keep manual mapping possible but
+            # never present the global name list as this workout's exercises.
+            MappingEditor(self, names=[])
+            return
+
+        def work():
+            return discover_names(self.client, selected, logger=logger)
+
+        def done(result):
+            names, failures = result
+            if names:
+                try:
+                    remember_names(names)
+                except OSError:
+                    logger.warning("Unable to remember selected exercise names")
+                self.status.set(
+                    self.tr("%d Übungen aus %d gewählten Training(s) geladen.") %
+                    (len(names), len(selected))
+                )
+            else:
+                self.status.set(
+                    self.tr("Für die markierten Trainings wurden keine Übungen geladen.")
+                )
+                messagebox.showwarning(
+                    self.tr("Keine Übungen abrufbar"),
+                    self.tr(
+                        "Für das gewählte Training sind keine abgeschlossenen "
+                        "Übungsdetails verfügbar. Der Zuordnungseditor wird "
+                        "ohne fremde Übungsnamen geöffnet. Du kannst Namen "
+                        "dort manuell hinzufügen."
+                    ),
+                    parent=self,
+                )
+            if failures and names:
+                logger.info(
+                    "Exercise mapping: partial selected-session details, "
+                    "failures=%d", failures
+                )
+            # Explicit names=[] is intentional: MappingEditor must NOT load
+            # observed_names() or any previous GMC workout by default.
+            MappingEditor(self, names=names)
+
+        self.run_job(work, done)
 
     def discover_mapping_names(self):
         """Optional discovery of new exercise names from selected Speediance workouts.

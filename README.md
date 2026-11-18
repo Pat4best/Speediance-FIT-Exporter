@@ -1,4 +1,4 @@
-# Speediance FIT Exporter (Beta 0.1.30)
+# Speediance FIT Exporter (Beta 0.1.31)
 
 Lokale Windows-10/11-Anwendung zum Abruf abgeschlossener Speediance-Trainingseinheiten aus dem eigenen Account und zum Export als Garmin-FIT-Aktivitäten. Die Speediance-API ist **inoffiziell**; der Login ist ohne echten Testaccount nicht verifiziert.
 
@@ -706,6 +706,39 @@ Wiederholungen und Gewichten bleiben erhalten.
 
 Die Regressionstests reproduzieren ausdrücklich den negativen
 95-Sekunden-Abstand und prüfen die unveränderten Garmin-Sensor-Datensätze.
+
+## 0.1.31-beta – Manuelle Garmin-Übungszuordnung wieder direkt erreichbar
+
+Wenn Speediance bei einem älteren oder gelöschten Custom-Training keine
+`finishedReps`-Details mehr liefert, blockierte bisher der Hauptfenster-
+Button **Übungen zuordnen…**: Er versuchte vor dem Öffnen des Editors
+einen Cloud-Detailabruf und brach bei `100041` ab.
+
+Die **manuelle Zuordnung ist jetzt unabhängig vom Cloud-Abruf**:
+
+- **Übungen zuordnen…** im Hauptfenster öffnet den vorhandenen
+  Garmin-Katalogeditor unmittelbar – auch ohne Login, API-Sätze oder
+  gespeicherte Übungsnamen. Im Editor können Namen über
+  **Übungsname hinzufügen…** lokal angelegt werden.
+- **Übungsnamen von Speediance laden…** ist ein eigener, optionaler
+  Button. Er ruft die tatsächlichen Namen der markierten Workouts über
+  die Speediance-API ab, wenn diese verfügbar sind.
+- Im Fenster **Mit Garmin abgleichen…** gibt es ebenfalls
+  **Übungen zuordnen…**. Nach dem bestätigten Import einer
+  GM-Manager-History-CSV stehen die darin enthaltenen Übungsnamen
+  sofort im Editor zur Auswahl. Ist noch keine Quelle verfügbar,
+  öffnet er trotzdem, damit Namen manuell angelegt werden können.
+- Bestätigte History-CSV-Übungsnamen und Zuordnungen werden nur in den
+  bestehenden lokalen Benutzer-Einstellungen gespeichert. Keine
+  CSV-Trainingswerte oder Accountkennungen werden dafür protokolliert.
+- Die Zuordnungen werden wie bisher beim endgültigen FIT-Export über
+  `saved_mappings()` auf die Garmin-FIT-Übungskategorien angewandt.
+  Die Gewichtskorrektur von 0.1.18 und alle Garmin-FIT-Messdaten bleiben
+  unverändert.
+
+**Abgrenzung:** Eine manuelle Übungszuordnung liefert keine fehlenden
+Satzdaten nach. Der direkte Satzabruf aus Speediance bleibt ein
+separates Entwicklungsziel.
 
 ## Windows-Installer
 

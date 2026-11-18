@@ -219,10 +219,11 @@ def overlay_garmin_fit(original, speediance, destination, priorities=None,
                        speediance_fit_bytes=None, expected_set_count=None):
     """Use the Garmin FIT as binary base, supplement with Speediance sets.
 
-    FIT manufacturer in the new *file_id* is DEVELOPMENT, with a fresh
-    serial number and creation time on each export. The authentic Garmin device_info messages and
-    all custom sensor data are retained as recorded, but the derivative does
-    not falsely claim to be an untouched original Garmin file.
+    The derived *file_id* retains the actual source Garmin manufacturer
+    and product while receiving a fresh serial number and creation time for
+    each export. Authentic original device_info messages and sensor data are
+    retained; the new file remains a separate, edited activity. Garmin Connect
+    may still detect identical workout times as duplicate activities.
     """
     from garmin_fit_reader import read_garmin_activity
 
@@ -396,6 +397,21 @@ def overlay_garmin_fit(original, speediance, destination, priorities=None,
     ):
         raise GarminOverlayError(
             "Garmin file_id ohne erforderliche Identitätsfelder")
+    # Retain manufacturer and product from the authentic Garmin input.
+    # This exact two-field change was tested in Garmin Connect: the
+    # 2026-11-13 merged activity recovered its original Training Effect
+    # (0.3 aerobic, 0.0 anaerobic, load 4). The former DEVELOPMENT=255,
+    # product=0 identifiers suppressed the displayed values despite the
+    # SESSION metrics being present byte-for-byte.
+    #
+    # Keep an independent derived file identity (new serial/created time)
+    # and preserve every original device_info message unchanged. Do not
+    # invent a different Garmin product or manufacturer for non-Garmin FITs.
+    original_manufacturer = _get_numeric(file_ids[0], 1)
+    original_product = _get_numeric(file_ids[0], 2)
+    if original_manufacturer is None or original_product is None:
+        raise GarminOverlayError(
+            "Garmin file_id ohne gültige Hersteller-/Produktkennung")
     original_serial = _get_numeric(file_ids[0], 3)
     original_created = _get_numeric(file_ids[0], 4)
     derivative_serial = randbits(32)
@@ -429,9 +445,13 @@ def overlay_garmin_fit(original, speediance, destination, priorities=None,
             continue
         changes = {}
         if num == 0:
-            # Derived file identity avoids reusing the original watch's
-            # file id and does not forge a new Garmin activity.
-            changes = {1: 255, 2: 0, 3: derivative_serial, 4: derivative_created}
+            # Preserve the verified source device's manufacturer/product
+            # while giving this edited, derived FIT its own identity. Do not
+            # override the actual Garmin watch's device_info messages.
+            changes = {
+                1: original_manufacturer, 2: original_product,
+                3: derivative_serial, 4: derivative_created,
+            }
         elif num == 18:
             changes = session_changes
         elif num == 19 and original_counts[19] == 1:
@@ -493,8 +513,10 @@ def overlay_garmin_fit(original, speediance, destination, priorities=None,
     emitted_ids = [x for x in final if x["kind"] == "data" and x["global"] == 0]
     if len(emitted_ids) != 1 or any(
         _get_numeric(emitted_ids[0], number) != value
-        for number, value in ((1, 255), (2, 0), (3, derivative_serial),
-                              (4, derivative_created))
+        for number, value in (
+            (1, original_manufacturer), (2, original_product),
+            (3, derivative_serial), (4, derivative_created),
+        )
     ):
         raise GarminOverlayError("Neue FIT-Dateiidentität konnte nicht gesetzt werden")
     for num, count in original_counts.items():

@@ -1,4 +1,4 @@
-# Speediance FIT Exporter (Beta 0.1.34)
+# Speediance FIT Exporter (Beta 0.1.35)
 
 Lokale Windows-10/11-Anwendung zum Abruf abgeschlossener Speediance-Trainingseinheiten aus dem eigenen Account und zum Export als Garmin-FIT-Aktivitäten. Die Speediance-API ist **inoffiziell**; der Login ist ohne echten Testaccount nicht verifiziert.
 
@@ -848,6 +848,51 @@ zuordenbar. Diese Version behebt den belegten Meldungsverlust und
 einen plausiblen Satzzeitfehler; ein erneuter Live-Test ist nötig.
 Es gibt weiterhin keine Behauptung, Garmin Connect würde alle
 Training-Effect-Metriken aus neuen Importen wiederherstellen.
+
+## 0.1.35-beta – Training Effect in Garmin Connect nach FIT-Reimport
+
+**Mit einem echten Nutzerimport am 18.11.2026 bestätigt:** Die originalen
+FIT-Sitzungswerte für Training Effect waren bereits in der von
+0.1.34-beta erzeugten MERGED-Datei erhalten, wurden in Garmin Connect
+aber nicht angezeigt. Im **separaten erfolgreichen Testimport** wurde
+ausschließlich die ursprüngliche, aus der Garmin-Original-FIT gelesene
+Hersteller- und Produktkennung in `file_id` wiederhergestellt
+(`Garmin/4536` statt `Development/0`). Danach zeigte Garmin Connect
+wieder **0,3 aerob / 0,0 anaerob / Belastungswert 4** zusammen mit
+**4 direkt von Speediance geladenen Sätzen**, **111/123 bpm** und dem
+Trainingsvolumen. Die Prüfsumme wurde für die beiden geänderten Felder
+neu berechnet. Bei anderen originalen Garmin-Geräten wird **deren
+tatsächlich aufgezeichnete** Kennung übernommen, nicht die hier
+getestete konkrete Produktnummer fest eingebaut.
+
+- Das Garmin-basierte FIT-Overlay kopiert jetzt die unveränderten
+  `file_id.manufacturer`- und `file_id.product`-Werte der originalen
+  Garmin-Quelle statt sie als `Development/0` zu überschreiben.
+  Ungültige Quellkennungen führen zu einer Fehlermeldung, nicht zu
+  erfundenen Geräteangaben.
+- Die MERGED-FIT erhält weiterhin eine **neue Dateiidentität**
+  (serielle Ableitungskennung und Erstellungszeit), ohne die ursprüngliche
+  Aktivitätszeit zu verändern. Garmin Connect kann dennoch Aktivitäten
+  mit gleicher Uhrzeit als Duplikate erkennen; der Import ersetzt
+  **niemals automatisch** eine vorhandene Aktivität.
+- Die vorhandenen Garmin-`device_info`- und Spezialnachrichten,
+  SESSION-Felder für Training Effect und alle Original-HF-Daten
+  werden wie zuvor beibehalten. Regressionstests prüfen zusätzlich
+  die ursprünglichen SESSION-Felder 24/137 und das unveränderte
+  Durchreichen eventuell vorhandener `MONITORING`-Nachrichten.
+  Repetitionen und Sätze werden weiterhin wie in 0.1.34 übernommen.
+
+**Intensitätsminuten sind ein getrenntes Garmin-Connect-Thema:**
+Die vom Nutzer angezeigten **3 moderaten + 1 hohe (doppelt gewertet)
+= 5 Minuten** wurden trotz identischer Garmin-Gerätekennung im
+Testimport nicht angezeigt. Die bereitgestellten Original- und
+MERGED-FIT-Dateien vom 13.11. enthalten beide **keine
+`MONITORING`-Nachrichten (FIT-Nachricht 55)**. Das ist kein Beleg,
+dass die 5 Minuten vollständig über diese Nachricht kodiert sein
+müssten; die Garmin-Connect-Geräte-/Gesundheitsberechnung kann separat
+erfolgen. **Keine Intensitätsminuten werden erfunden oder künstlich
+in die FIT geschrieben.** Die originale Garmin-Aktivität bleibt
+unverändert.
 
 ## Windows-Installer
 

@@ -212,6 +212,9 @@ class Client:
         self.login_client_type = login_client_type
         self.cache_dir = cache_dir
         self.calendar_fallback_added = 0
+        # Avoid re-probing unavailable sessions on every refresh in this login
+        # session. No identifiers are written to diagnostics or preferences.
+        self._snapshot_attempted = set()
 
     def request(self, path, payload=None, allow_error=False, login_as=None, read_version=None):
         method = "POST" if payload is not None else "GET"
@@ -676,7 +679,76 @@ class Client:
                 "record_ref_responses_with_completed_sets": record_successes,
                 "history_available": bool(workout.get("_history_response_shape"))}
 
-    def detail(self, workout):
+    def snapshot_recent_workouts(self, workouts, *, today=None,
+                                 max_attempts=3, max_age_days=30):
+        """Proactively save recent *completed* sets directly from Speediance.
+
+        Called from the existing background worker after reading history.
+        Bounded to 3 uncached sessions per refresh and current version GETs
+        to avoid hammering the unofficial API; the normal on-demand detail()
+        retains full legacy fallback. Skips missing credentials/cache and
+        old/future entries. Failed or empty detail responses are never cached,
+        and never block displaying the completed workout list.
+
+        This cannot recover a deleted template whose recording disappeared
+        *before* the first successful snapshot.
+        """
+        stats = {"attempted": 0, "saved": 0, "already_cached": 0,
+                 "unavailable": 0}
+        if not (self.token and self.user_id and self.cache_dir):
+            return stats
+        if not isinstance(workouts, list):
+            return stats
+        today = today if today is not None else date.today()
+        if not isinstance(today, date):
+            return stats
+        for workout in workouts:
+            if not isinstance(workout, dict):
+                continue
+            try:
+                day = date.fromisoformat(str(workout["day"])[:10])
+                training_id = int(workout["training_id"])
+            except (KeyError, TypeError, ValueError, OverflowError):
+                continue
+            if not (training_id > 0 and 0 <= (today - day).days <= max_age_days):
+                continue
+            cache = load_detail_cache(self.cache_dir, self.host,
+                                      self.user_id, workout)
+            if cache is not None:
+                stats["already_cached"] += 1
+                continue
+            identity = (training_id, day.isoformat())
+            if identity in self._snapshot_attempted:
+                continue
+            if stats["attempted"] >= max_attempts:
+                break
+            self._snapshot_attempted.add(identity)
+            stats["attempted"] += 1
+            try:
+                # Quick snapshot: only current-version known GET routes.
+                # On manual merge, detail() retries the old version as before.
+                self.detail(workout, quick=True)
+                if load_detail_cache(self.cache_dir, self.host,
+                                     self.user_id, workout) is not None:
+                    stats["saved"] += 1
+                else:
+                    stats["unavailable"] += 1
+            except Exception as exc:
+                # Optional protection must never hide the training list.
+                self.logger.warning(
+                    "Automatic completed-set snapshot unavailable (%s)",
+                    type(exc).__name__,
+                )
+                stats["unavailable"] += 1
+        self.logger.info(
+            "Recent Speediance completed-set snapshot: attempted=%d "
+            "saved=%d already_cached=%d unavailable=%d",
+            stats["attempted"], stats["saved"],
+            stats["already_cached"], stats["unavailable"],
+        )
+        return stats
+
+    def detail(self, workout, *, quick=False):
         # A completed workout is immutable. Prefer its previously verified
         # observations over another network request; never reconstruct
         # planned weights from a calendar template.
@@ -707,7 +779,8 @@ class Client:
         # workout in the calendar. Try the older *read-only* version headers
         # after the ordinary routes fail. No additional logins or POSTs.
         variants = [(route, None) for route in routes]
-        variants.extend((route, READ_VERSIONS[-1]) for route in routes)
+        if not quick:
+            variants.extend((route, READ_VERSIONS[-1]) for route in routes)
         self.logger.info(
             "Fetching session details using up to %d routes and %d "
             "read-only API version variants", len(routes), len(variants)

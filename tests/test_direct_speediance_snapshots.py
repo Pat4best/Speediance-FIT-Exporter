@@ -6,6 +6,7 @@ requires real workout metadata, or accesses the user's Windows credentials.
 from datetime import date
 from pathlib import Path
 from tempfile import TemporaryDirectory
+from types import SimpleNamespace
 import logging
 import sys
 import unittest
@@ -157,6 +158,49 @@ class DirectSpeedianceTests(unittest.TestCase):
             with self.assertRaises(APIError):
                 client.detail(session)
             self.assertGreater(len(calls), before)
+
+    def test_main_history_loading_triggers_snapshot_without_second_action(self):
+        from main import App
+
+        class Field:
+            def __init__(self, value=""):
+                self.value = value
+            def get(self):
+                return self.value
+            def set(self, value):
+                self.value = value
+
+        class Table:
+            def __init__(self):
+                self.insertions = []
+            def get_children(self):
+                return []
+            def insert(self, *args, **kwargs):
+                self.insertions.append(kwargs["values"])
+
+        requested = []
+        session = workout(512, type_=5)
+        fake_client = SimpleNamespace(
+            list_workouts=lambda start, end:
+                requested.append(("list", start, end)) or [session],
+            snapshot_recent_workouts=lambda sessions:
+                requested.append(("snapshot", sessions)) or
+                {"attempted": 1, "saved": 1,
+                 "already_cached": 0, "unavailable": 0},
+            calendar_fallback_added=0, calendar_other_device_added=0,
+            history_added=1,
+        )
+        fake = SimpleNamespace(
+            client=fake_client, from_date=Field("2026-11-16"),
+            to_date=Field("2026-11-18"), sessions=[],
+            table=Table(), status=Field(), tr=lambda text: text,
+            run_job=lambda action, done: done(action()),
+        )
+        App.fetch(fake)
+        self.assertEqual([r[0] for r in requested], ["list", "snapshot"])
+        self.assertEqual(fake.sessions, [session])
+        self.assertEqual(len(fake.table.insertions), 1)
+        self.assertIn("Automatisch gesichert: 1", fake.status.get())
 
     def test_recent_limit_skips_stale_future_and_unauthed_records(self):
         with TemporaryDirectory() as root:

@@ -15,7 +15,7 @@ from speediance_api import Client
 from fitwriter import write_fit
 from exercise_mapping import fit_exercise
 from windows_credentials import load_login, save_login, delete_login
-from preferences import export_folder, save_export_folder, saved_mappings, saved_weight_multipliers, remember_names, load_login_client_type, save_login_client_type
+from preferences import export_folder, save_export_folder, saved_mappings, saved_weight_multipliers, remember_names, observed_names, load_login_client_type, save_login_client_type
 from mapping_editor import MappingEditor
 from garmin_dialog import GarminMergeDialog
 from exercise_discovery import discover_names
@@ -23,7 +23,7 @@ from preferences import load_language, save_language
 from i18n import translate
 
 APP = "Speediance FIT Exporter"
-VERSION = "0.1.30-beta"
+VERSION = "0.1.31-beta"
 DATA = Path(os.environ.get("LOCALAPPDATA", Path.home())) / "SpeedianceFITExporter"
 DATA.mkdir(parents=True, exist_ok=True)
 LOG = DATA / "diagnose.log"
@@ -223,6 +223,11 @@ class App(tk.Tk):
         self.mapping_button = ttk.Button(actions, text=self.tr("Übungen zuordnen…"),
                                          command=self.manage_mappings)
         self.mapping_button.pack(side="left", padx=(10, 0))
+        self.mapping_discovery_button = ttk.Button(
+            actions, text=self.tr("Übungsnamen von Speediance laden…"),
+            command=self.discover_mapping_names,
+        )
+        self.mapping_discovery_button.pack(side="left", padx=(10, 0))
         self.garmin_merge_button = ttk.Button(
             actions, text=self.tr("Mit Garmin abgleichen…"),
             command=self.open_garmin_merge,
@@ -294,7 +299,18 @@ class App(tk.Tk):
         return folder
 
     def manage_mappings(self):
-        """Load names from marked Speediance workouts before showing the editor.
+        """Open manual mappings independently of Speediance's detail API.
+
+        Known names and overrides are stored on this PC. The editor also
+        allows manually entering a source exercise name when no cloud
+        details or history CSV are available.
+        """
+        if self.busy:
+            return
+        MappingEditor(self, names=observed_names())
+
+    def discover_mapping_names(self):
+        """Optional discovery of new exercise names from selected Speediance workouts.
 
         If no workout is selected, show already discovered names. Never open a
         silently empty editor when no exercises have been collected yet.
@@ -356,6 +372,7 @@ class App(tk.Tk):
         self.status.set(self.tr("Arbeite …"))
         for button in (self.login_button, self.fetch_button,
                        self.export_button, self.mapping_button,
+                       self.mapping_discovery_button,
                        self.garmin_merge_button, self.inspect_button):
             button.state(["disabled"])
 
@@ -387,6 +404,7 @@ class App(tk.Tk):
                 self.busy = False
                 for button in (self.login_button, self.fetch_button,
                                self.export_button, self.mapping_button,
+                               self.mapping_discovery_button,
                                self.garmin_merge_button, self.inspect_button):
                     button.state(["!disabled"])
                 if kind == "ok":

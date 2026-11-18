@@ -192,7 +192,7 @@ class LegacyCompletedSetReadTests(unittest.TestCase):
         with self.assertRaisesRegex(APIError, "keine Übungsdetails"):
             c.detail({"day": "2026-11-16", "type": 5,
                       "training_id": 456, "duration_min": 5})
-        self.assertEqual(len(calls), 8)
+        self.assertEqual(len(calls), 10)
         self.assertTrue(all(k.get("allow_error") for _, k in calls))
 
 

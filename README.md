@@ -1,4 +1,4 @@
-# Speediance FIT Exporter (Beta 0.1.31)
+# Speediance FIT Exporter (Beta 0.1.32)
 
 Lokale Windows-10/11-Anwendung zum Abruf abgeschlossener Speediance-Trainingseinheiten aus dem eigenen Account und zum Export als Garmin-FIT-Aktivitäten. Die Speediance-API ist **inoffiziell**; der Login ist ohne echten Testaccount nicht verifiziert.
 
@@ -739,6 +739,44 @@ Die **manuelle Zuordnung ist jetzt unabhängig vom Cloud-Abruf**:
 **Abgrenzung:** Eine manuelle Übungszuordnung liefert keine fehlenden
 Satzdaten nach. Der direkte Satzabruf aus Speediance bleibt ein
 separates Entwicklungsziel.
+
+## 0.1.32-beta – Direkter Speediance-Satzabruf und automatische Sicherung
+
+**Ohne GM Manager und ohne manuelle CSV:** Beim Klick auf
+**Trainings laden** werden die jüngsten, noch nicht lokal gesicherten
+abgeschlossenen Speediance-Einheiten nun unmittelbar über die bestehenden
+authentifizierten, ausschließlich lesenden Speediance-GET-Endpunkte
+abgerufen. Erfolgreich geladene **tatsächlich absolvierte** Sätze
+werden im bereits vorhandenen, nach Speediance-Konto/Region/Training
+getrennten lokalen Cache gespeichert. Die Sicherung ist auf maximal
+**3 neue Einheiten pro Laden**, **30 Tage Rückblick** und eine
+aktuelle API-Versionsvariante beschränkt, um die inoffizielle Speediance-API
+nicht mit Massenzugriffen zu belasten. Ein vorübergehender Fehler einer
+Einheit blockiert die Trainingsliste nicht. Bei der späteren FIT-Erstellung
+wird der Cache automatisch wiederverwendet.
+
+Zusätzlich unterstützt der direkte API-Client jetzt das nachgewiesene
+**Free Lift**-Antwortformat
+`freeTraining → actionList[].setList[].summary`. Die tatsächlich
+abgeschlossenen Werte (`finishedCount`, `time` und
+`summary.weight`) werden in normale Satzdaten umgesetzt. Nicht
+absolvierte oder nur geplante Sätze werden nicht exportiert. Das ebenfalls
+vorhandene direkte `freeTrainingDetail`-Format wird als zusätzlicher
+GET-Fallback erkannt. `summary.weight` ist bereits das angezeigte
+Gesamtgewicht der Free-Lift-Aufzeichnung; daraus wird **keine pauschale
+Verdopplung** abgeleitet. Die für Custom- und Kurs-Trainings
+bestehende modale Gewichtsmessung bleibt unverändert.
+
+**Grenzen:** Vor der ersten erfolgreichen Sicherung gelöschte
+Trainingsvorlagen können nicht aus leeren Serverantworten rekonstruiert
+werden. Der konkrete Fall vom 16.11.2026 mit Code 100041 bleibt
+deshalb ohne historische Kopie der vollendeten Sätze ein
+Serverdaten-Problem; die früher erfolgreich importierte CSV bleibt eine
+optionale Alt-Daten-Rettung. Die neue Free-Lift-Unterstützung ist
+durch synthetische API-Antworten und Regressionstests geprüft,
+nicht durch einen Live-Login auf das Nutzerkonto. Es gibt keine
+zusätzlichen Logins, keine Drittanbieter-API und keine automatischen
+Garmin-Connect-Änderungen.
 
 ## Windows-Installer
 

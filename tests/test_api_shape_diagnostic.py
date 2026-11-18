@@ -107,10 +107,10 @@ class ShapeDiagnosticTests(unittest.TestCase):
                 "_history_response_shape": structural_log({"id": 7777}),
                 "_completed_record_id": "PRIVATE-RECORD-UUID-123",
             })
-            self.assertEqual(report["checked"], 8)
-            self.assertEqual(report["record_ref_checked"], 8)
+            self.assertEqual(report["checked"], 10)
+            self.assertEqual(report["record_ref_checked"], 10)
             self.assertEqual(report["record_ref_responses_with_completed_sets"], 2)
-            self.assertEqual(len(requests), 16)
+            self.assertEqual(len(requests), 20)
             self.assertTrue(all("allow_error" in kw for _, kw in requests))
             self.assertIn("Selected recordId detail route=", stream.getvalue())
             self.assertIn("finishedReps[].finishedCount", stream.getvalue())
@@ -144,7 +144,7 @@ class ShapeDiagnosticTests(unittest.TestCase):
                            "title": "SECRET TITLE",
                        })}
             report = client.diagnose_workout(workout)
-            self.assertEqual(report["checked"], 8)
+            self.assertEqual(report["checked"], 10)
             self.assertEqual(report["responses_with_completed_sets"], 2)
             content = stream.getvalue()
             self.assertIn("exerciseList[].finishedReps[].finishedCount", content)
@@ -152,7 +152,7 @@ class ShapeDiagnosticTests(unittest.TestCase):
             self.assertNotIn("SECRET", content)
             self.assertNotIn("12345678", content)
             self.assertNotIn("87654321", content)
-            self.assertEqual(len(calls), 8)
+            self.assertEqual(len(calls), 10)
         finally:
             log.removeHandler(handler)
 

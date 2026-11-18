@@ -123,15 +123,34 @@ class GarminMergeTests(unittest.TestCase):
         self.assertEqual(sets[0][6][1], stamp(GARMIN_START))
         self.assertEqual([fields[4][1] / 16 for fields in sets], [20.0, 20.0])
 
-    def test_recorded_telemetry_is_not_shifted_by_csv_timing_fix(self):
-        # Only estimated CSV/JSON set timestamps may be realigned. Genuine
-        # original-Speediance timestamps must never be silently shifted.
+    def test_direct_speediance_sets_are_estimated_but_hr_remains_absolute(self):
+        # Even the direct Speediance API supplies recorded reps, weights and
+        # durations but no real per-SET start timestamps to write into FIT.
+        # When the watch began later, shift estimated SET positions ONLY.
+        # Genuine HR timestamps must still be mapped from their original
+        # absolute Speediance start and Garmin records remain unchanged.
         g = read_garmin_activity(garmin_fit_fixture())
         s = speediance_fixture()
         s["started_at"] = (GARMIN_START - timedelta(seconds=95)).isoformat()
+        s["finished_at"] = (GARMIN_START + timedelta(seconds=205)).isoformat()
+        s["heart_rate_points"] = [(0, 90), (95, 128), (120, 140)]
         merged, meta = merge_workout(s, g)
-        self.assertEqual(merged["strength_start_offset"], -95)
-        self.assertFalse(meta["set_timing_aligned_to_activity_start"])
+        self.assertEqual(meta["set_timing_original_offset_seconds"], -95)
+        self.assertEqual(merged["strength_start_offset"], 0)
+        self.assertTrue(meta["set_timing_aligned_to_activity_start"])
+        self.assertEqual(merged["started_at"], GARMIN_START.isoformat())
+        series = dict(merged["heart_rate_points"])
+        self.assertNotIn(-95, series)  # pre-watch sample is outside activity
+        self.assertEqual(series[0], 128)  # genuine Speediance observation
+        self.assertEqual(series[25], 140)
+        self.assertEqual(series[60], 101)  # genuine Garmin watch observation
+        self.assertEqual(series[65], 107)
+        with TemporaryDirectory() as folder:
+            output = write_fit(merged, Path(folder) / "direct.fit")
+            result = decode(output.read_bytes())
+        sets = [fields for num, fields in result if num == 225]
+        self.assertEqual(len(sets), 2)
+        self.assertEqual(sets[0][6][1], stamp(GARMIN_START))
 
     def test_speediance_can_override_each_metric_independently(self):
         speed = speediance_fixture()

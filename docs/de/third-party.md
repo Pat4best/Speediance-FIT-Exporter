@@ -1,5 +1,7 @@
 # Drittquellen, Marken und Lizenzprüfung
 
+[English version](../en/third-party.md) · [Dokumentationsübersicht](README.md)
+
 **Stand:** 0.1.35-rc.2 · **Vorläufige Bestandsaufnahme, keine Rechtsberatung**
 
 Der Speediance FIT Exporter ist unabhängige Software. Der Quellcode besteht überwiegend aus Python-Standardbibliothek-basierten Komponenten; zur Erstellung des Windows-Installers werden PyInstaller und NSIS verwendet. Externe Marken, Protokollprofile, Server-APIs und deren Nutzungsrechte sind davon zu unterscheiden.

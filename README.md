@@ -1,4 +1,4 @@
-# Speediance FIT Exporter (Beta 0.1.32)
+# Speediance FIT Exporter (Beta 0.1.33)
 
 Lokale Windows-10/11-Anwendung zum Abruf abgeschlossener Speediance-Trainingseinheiten aus dem eigenen Account und zum Export als Garmin-FIT-Aktivitäten. Die Speediance-API ist **inoffiziell**; der Login ist ohne echten Testaccount nicht verifiziert.
 
@@ -777,6 +777,35 @@ durch synthetische API-Antworten und Regressionstests geprüft,
 nicht durch einen Live-Login auf das Nutzerkonto. Es gibt keine
 zusätzlichen Logins, keine Drittanbieter-API und keine automatischen
 Garmin-Connect-Änderungen.
+
+## 0.1.33-beta – Übungszuordnung an ausgewähltes Training gebunden
+
+**Behobener Fehler aus 0.1.32:** Ein markiertes Training wie
+`Your First Training with Gym Monster` zeigte im manuellen
+Zuordnungseditor trotzdem die zuvor gespeicherten GMC-Übungen des
+16.11.2026. Ursache: Der Hauptfenster-Button
+`Übungen zuordnen…` benutzte immer den globalen `observed_names()`-
+Pool, auch wenn ein einzelnes Training markiert war.
+
+- **Mit markiertem Training:** Der Editor zeigt ausschließlich die
+  tatsächlich absolvierten Übungen aus dem bereits automatisch
+  gespeicherten und nach Konto, Region und Training isolierten
+  Speediance-Detailcache. Es gibt keine erneute API-Abfrage.
+  Fehlt der Cache, öffnet sich der Editor leer mit einem
+  verständlichen Hinweis statt mit fremden Übungen. **Übungsname
+  hinzufügen…** bleibt möglich.
+- **Ohne markiertes Training:** Alle bisher gespeicherten Übungen und
+  manuellen Garmin-Zuordnungen sind wie bisher sichtbar und bearbeitbar.
+- **Übungsnamen von Speediance laden…:** Der separate Button kann
+  neue Namen bei Bedarf online für die markierte Einheit abrufen.
+- **Im Garmin-Abgleich:** Der Editor verwendet entweder die
+  bestätigten Übungsnamen einer History-CSV oder die gespeicherten
+  Speediance-Details des ausgewählten Trainings, niemals die global
+  gespeicherten Übungen einer anderen Einheit.
+- Bereits gespeicherte Garmin-Kategorien/-IDs und
+  Gewichtsmultiplikatoren werden **nicht gelöscht oder geändert**.
+  Free-Lift-Unterstützung, automatische Sicherung und der
+  Garmin-FIT-Merge aus 0.1.32 bleiben unangetastet.
 
 ## Windows-Installer
 

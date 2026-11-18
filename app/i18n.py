@@ -4,6 +4,9 @@ Speediance exercise names and raw diagnostic logs are not translated.
 Keep the source German keys stable; English is the user-facing alternative.
 """
 EN = {
+    "Für das gewählte Training sind noch keine abgeschlossenen Übungsdetails lokal gespeichert. Du kannst Namen manuell hinzufügen oder sie über 'Übungsnamen von Speediance laden…' abrufen.":
+        "No completed exercise details have been saved locally for the selected workout yet. You can add exercise names manually or use 'Load exercise names from Speediance…'.",
+
     " Automatisch gesichert: %d neue Speediance-Trainingsdetails.":
         " Automatically saved: %d new completed Speediance workouts.",
 

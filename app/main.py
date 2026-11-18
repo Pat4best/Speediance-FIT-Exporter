@@ -18,12 +18,12 @@ from windows_credentials import load_login, save_login, delete_login
 from preferences import export_folder, save_export_folder, saved_mappings, saved_weight_multipliers, remember_names, observed_names, load_login_client_type, save_login_client_type
 from mapping_editor import MappingEditor
 from garmin_dialog import GarminMergeDialog
-from exercise_discovery import discover_names
+from exercise_discovery import discover_names, cached_workout_names
 from preferences import load_language, save_language
 from i18n import translate
 
 APP = "Speediance FIT Exporter"
-VERSION = "0.1.32-beta"
+VERSION = "0.1.33-beta"
 DATA = Path(os.environ.get("LOCALAPPDATA", Path.home())) / "SpeedianceFITExporter"
 DATA.mkdir(parents=True, exist_ok=True)
 LOG = DATA / "diagnose.log"
@@ -299,15 +299,52 @@ class App(tk.Tk):
         return folder
 
     def manage_mappings(self):
-        """Open manual mappings independently of Speediance's detail API.
+        """Map *only* exercises from the marked workout(s).
 
-        Known names and overrides are stored on this PC. The editor also
-        allows manually entering a source exercise name when no cloud
-        details or history CSV are available.
+        No selection deliberately displays the full historical mapping pool;
+        selecting a workout instead loads its account-scoped completed-set
+        details, preferring the existing verified cache. Do not silently
+        substitute exercises from another workout if this lookup fails.
+        The editor remains usable with an empty list for manual additions.
         """
         if self.busy:
             return
-        MappingEditor(self, names=observed_names())
+        indices = [int(i) for i in self.table.selection()]
+        if not indices:
+            MappingEditor(self, names=observed_names())
+            return
+        selected = [self.sessions[i] for i in indices]
+        names = []
+        seen = set()
+        for workout in selected:
+            # Offline, read-only account+training-scoped cache. The separate
+            # "Übungsnamen von Speediance laden…" button fetches new names.
+            for name in cached_workout_names(self.client, workout):
+                if name.casefold() not in seen:
+                    seen.add(name.casefold())
+                    names.append(name)
+        if names:
+            self.status.set(
+                self.tr("%d Übungen aus %d gewählten Training(s) geladen.") %
+                (len(names), len(selected))
+            )
+        else:
+            self.status.set(
+                self.tr("Für die markierten Trainings wurden keine Übungen geladen.")
+            )
+            messagebox.showinfo(
+                self.tr("Übungen zuordnen"),
+                self.tr(
+                    "Für das gewählte Training sind noch keine abgeschlossenen "
+                    "Übungsdetails lokal gespeichert. Du kannst Namen "
+                    "manuell hinzufügen oder sie über "
+                    "'Übungsnamen von Speediance laden…' abrufen."
+                ),
+                parent=self,
+            )
+        # Explicit names=[] keeps the editor open and prevents old GMC
+        # exercises from being displayed under a different selected workout.
+        MappingEditor(self, names=names)
 
     def discover_mapping_names(self):
         """Optional discovery of new exercise names from selected Speediance workouts.

@@ -12,6 +12,7 @@ from gm_manager_import import (GMManagerImportError, load_gm_manager_file,
                                resolve_exercise_names)
 from gm_history_import import GMHistoryCSVError, load_gm_history_file
 from mapping_editor import MappingEditor
+from exercise_discovery import cached_workout_names
 from garmin_local_fit import (
     read_local_garmin_fit, match_local_garmin_fit, LocalGarminFitError,
 )
@@ -20,7 +21,7 @@ from speediance_api import APIError
 from garmin_personal import GarminPersonalClient, GarminPersonalError, match_activities
 from preferences import (saved_mappings, saved_weight_multipliers,
                          saved_merge_priorities, save_merge_priorities,
-                         observed_names, remember_names)
+                         remember_names)
 from windows_credentials import (save_garmin_api_key, load_garmin_api_key,
                                  delete_garmin_api_key)
 
@@ -370,9 +371,16 @@ class GarminMergeDialog(tk.Toplevel):
         """
         if self.app.busy:
             return
-        names = mapping_names_for_merge(self.gm_history_import, observed_names())
-        # The editor already supports "Übungsname hinzufügen…" for entirely
-        # offline manual mapping. Never block opening when the API is empty.
+        # The selected session is the context: use confirmed CSV rows if
+        # supplied, otherwise the account-isolated Speediance detail cache.
+        # The old global observed_names() pool made unrelated GMC exercises
+        # look like they belonged to this workout.
+        if self.gm_history_import is not None:
+            names = mapping_names_for_merge(self.gm_history_import, [])
+        else:
+            names = cached_workout_names(self.app.client, self.workout)
+        # The editor supports "Übungsname hinzufügen…" when nothing was
+        # cached. Never substitute exercises from another workout.
         editor = MappingEditor(self, names=names)
         self.wait_window(editor)
         if self.winfo_exists():

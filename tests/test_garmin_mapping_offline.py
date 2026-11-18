@@ -56,8 +56,7 @@ class OfflineGarminMappingTests(unittest.TestCase):
                                 winfo_exists=lambda: True,
                                 grab_set=lambda: None,
                                 wait_window=lambda editor: None)
-        with patch("garmin_dialog.observed_names", return_value=["Old Mapping"]), \
-             patch("garmin_dialog.MappingEditor") as editor:
+        with patch("garmin_dialog.MappingEditor") as editor:
             GarminMergeDialog._open_mapping_editor(state)
         editor.assert_called_once_with(
             state, names=["Mat L", "Seated Row"]
@@ -161,8 +160,6 @@ class OfflineGarminMappingTests(unittest.TestCase):
         )
         with patch("garmin_dialog.cached_workout_names",
                    return_value=["Selected Exercise"]), \
-             patch("garmin_dialog.observed_names",
-                   return_value=["Old GMC Exercise"]), \
              patch("garmin_dialog.MappingEditor") as editor:
             GarminMergeDialog._open_mapping_editor(state)
         editor.assert_called_once_with(

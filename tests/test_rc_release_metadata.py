@@ -1,6 +1,5 @@
 """RC packaging/documentation checks, no Windows installation or account needed."""
 from pathlib import Path
-import re
 import unittest
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -52,7 +51,7 @@ class RCReleaseChecks(unittest.TestCase):
         )
         self.assertRegex(docs, r"Intensitätsminuten")
         self.assertRegex(docs, r"Garmin")
-        self.assertRegex(docs, r"keine.*Garmin.*Aktivität|Garmin.*nicht")
+        self.assertIn("nicht dem Garmin-Wochenkonto", docs)
 
 
 if __name__ == "__main__":

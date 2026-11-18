@@ -19,16 +19,16 @@ from api_shape_diagnostic import structural_log
 
 HOSTS = {"EU": "euapi.speediance.com", "Global": "api2.speediance.com"}
 ROUTES = {
-    1: ["freeTraining"],
+    1: ["freeTraining", "freeTrainingDetail"],
     2: ["courseTrainingInfoDetail"],
     3: ["cttTrainingInfoDetail"],
     4: ["aiCourseTrainingInfoDetail"],
     5: ["cttTrainingInfoDetail"],
-    6: ["freeTraining"],
-    7: ["freeTraining"],
+    6: ["freeTraining", "freeTrainingDetail"],
+    7: ["freeTraining", "freeTrainingDetail"],
     9: ["aiCourseTrainingInfoDetail"],
 }
-ALL_ROUTES = ["cttTrainingInfoDetail", "courseTrainingInfoDetail", "freeTraining", "aiCourseTrainingInfoDetail"]
+ALL_ROUTES = ["cttTrainingInfoDetail", "courseTrainingInfoDetail", "freeTraining", "freeTrainingDetail", "aiCourseTrainingInfoDetail"]
 # Speediance keeps one session per client type. The phone app uses SOFTWARE.
 # BIKE/NANO work as separate slots, provided the user owns neither device.
 # References: labatt/speediance-mcp and labatt/speediance-smartgym-workout-manager.
@@ -43,6 +43,68 @@ READ_VERSIONS = ("41000", "40304")  # Current and previously working calendar AP
 
 class APIError(Exception):
     pass
+
+
+def free_lift_to_finished_reps(payload):
+    """Normalize recorded Free Lift summaries from Speediance's own API.
+
+    The 'freeTraining' endpoint responds with an actionList/setList/summary
+    object, not an array of finishedReps exercises. Its summary.weight
+    is already the recorded display load across active handles (in the
+    account's selected unit); do NOT infer a second-handle multiplier
+    from set capacity. Only actual set summaries with nonzero reps or
+    elapsed seconds become completed sets. Source: the independently
+    tested Free Lift parser in labatt/speediance-smartgym-workout-manager.
+    """
+    if not isinstance(payload, dict):
+        return []
+    actions = payload.get("actionList")
+    if not isinstance(actions, list) or not 0 < len(actions) <= 300:
+        return []
+    exercises = []
+    total_sets = 0
+    for action in actions:
+        if not isinstance(action, dict):
+            continue
+        rows = action.get("setList")
+        if not isinstance(rows, list) or len(rows) > 300:
+            continue
+        completed = []
+        for row in rows:
+            if not isinstance(row, dict):
+                continue
+            summary = row.get("summary")
+            if not isinstance(summary, dict):
+                continue
+            try:
+                reps = int(summary.get("finishedCount") or 0)
+                seconds = float(summary.get("time") or 0)
+                weight = float(summary.get("weight") or 0)
+            except (TypeError, ValueError, OverflowError):
+                continue
+            if not (0 <= reps <= 65534 and 0 <= seconds <= 86400
+                    and 0 <= weight <= 4095):
+                continue
+            if reps == 0 and seconds == 0:
+                continue  # set never performed; do not export a template
+            completed.append({
+                "finishedCount": reps,
+                "time": seconds,
+                "leftRight": summary.get("leftRight") or 0,
+                "maxHeartRate": summary.get("maxHeartRate"),
+                "_summary_weight_already_total": True,
+                "trainingInfoDetail": {"weights": [weight]},
+            })
+            total_sets += 1
+            if total_sets > 500:
+                return []
+        if completed:
+            exercises.append({
+                "actionLibraryName": action.get("actionLibraryName") or "Übung",
+                "completionMethod": action.get("completionMethod"),
+                "finishedReps": completed,
+            })
+    return exercises
 
 
 _SAFE_COMPLETED_RECORD_ID = re.compile(r"[A-Za-z0-9_.-]{1,120}\Z")
@@ -662,11 +724,24 @@ class Client:
             candidate_sensor = find_hr_sensor(candidate)
             candidate_uuid = (candidate.get("uuid") if isinstance(candidate, dict) else None)
             if isinstance(candidate, dict):
-                # Free Lift and other variant APIs can carry a session UUID
-                # on the response wrapper.
-                candidate = next((candidate[key] for key in (
-                    "list", "records", "data", "trainingInfoDetailList", "exerciseList")
-                    if isinstance(candidate.get(key), list)), [])
+                # Completed Free Lift records use an object containing
+                # actionList/setList/summary. Other routes use finishedReps.
+                # This is an established API response shape, not a guess
+                # about IDs or a reconstruction from prescribed plans.
+                free_lift = free_lift_to_finished_reps(candidate)
+                if free_lift:
+                    self.logger.info(
+                        "Normalized Speediance Free Lift recording: exercises=%d sets=%d",
+                        len(free_lift),
+                        sum(len(ex["finishedReps"]) for ex in free_lift),
+                    )
+                    candidate = free_lift
+                else:
+                    # Other variant APIs can carry a session UUID on the
+                    # response wrapper.
+                    candidate = next((candidate[key] for key in (
+                        "list", "records", "data", "trainingInfoDetailList", "exerciseList")
+                        if isinstance(candidate.get(key), list)), [])
             # A nonempty list can still be just a template with zero performed
             # reps. Keep looking for the session's actual completed-set log.
             if isinstance(candidate, list) and any(
@@ -695,7 +770,12 @@ class Client:
                 if not recording_uuid and isinstance(detail.get("uuid"), str):
                     recording_uuid = detail["uuid"]
                 weight, already_total, weight_diagnostic = measured_set_weight(detail, s)
-                source = weight_diagnostic["source"]
+                if s.get("_summary_weight_already_total"):
+                    # Verified Free Lift summary.weight is already a total
+                    # display load; don't double it on a named dual handle.
+                    already_total = True
+                source = ("free_lift_summary" if s.get("_summary_weight_already_total")
+                          else weight_diagnostic["source"])
                 weight_sources[source] = weight_sources.get(source, 0) + 1
                 variable_sets += int(weight_diagnostic["contains_changes"])
                 # Available fields, never their contents, may help distinguish

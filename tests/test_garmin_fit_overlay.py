@@ -36,6 +36,9 @@ def original_garmin_fit():
     ])
     enc.mesg(233, [(253, 0x86, stamp(GARMIN_START)), (0, 0x86, 1234)])
     enc.mesg(534, [(253, 0x86, stamp(GARMIN_START)), (0, 0x86, 9876)])
+    # Some activities contain extra monitoring messages. Their original
+    # contents must be copied, never synthesized or rewritten.
+    enc.mesg(55, [(253, 0x86, stamp(GARMIN_START)), (0, 0x84, 42)])
     # An original, rough Garmin SET is replaced with two actual Speediance sets.
     enc.mesg(225, [
         (254, 0x86, stamp(GARMIN_START + timedelta(seconds=5))),
@@ -59,6 +62,9 @@ def original_garmin_fit():
         (8, 0x86, 360000), (10, 0x86, 57),
         (11, 0x84, 416),
         (16, 2, 111), (17, 2, 146),
+        (24, 2, 3),    # genuine aerobic Training Effect 0.3
+        (137, 2, 0),   # genuine anaerobic Training Effect 0.0
+        (199, 0x84, 4),  # original manufacturer-specific session field
     ])
     enc.mesg(34, [
         (253, 0x86, stamp(GARMIN_START + timedelta(seconds=360))),
@@ -118,6 +124,13 @@ class GarminOverlayTests(unittest.TestCase):
                          all_message_data(result, 233))
         self.assertEqual(all_message_data(original, 534),
                          all_message_data(result, 534))
+        self.assertEqual(all_message_data(original, 55),
+                         all_message_data(result, 55))
+        original_session = values(original, 18)[0]
+        merged_session = values(result, 18)[0]
+        self.assertEqual(merged_session[24][1], original_session[24][1])
+        self.assertEqual(merged_session[137][1], original_session[137][1])
+        self.assertEqual(merged_session[199][1], original_session[199][1])
         # Every ORIGINAL Garmin HR record is unchanged, including distance.
         original_records = all_message_data(original, 20)
         for record in original_records:
@@ -142,7 +155,10 @@ class GarminOverlayTests(unittest.TestCase):
         original_id = values(original, 0)[0]
         derivative_id = values(result, 0)[0]
         self.assertEqual(original_id[1][1], 1)
-        self.assertEqual(derivative_id[1][1], 255)
+        # Preserve source Garmin manufacturer AND product. Proven by the
+        # user's successful Garmin Connect import of a two-field FIT patch.
+        self.assertEqual(derivative_id[1][1], original_id[1][1])
+        self.assertEqual(derivative_id[2][1], original_id[2][1])
         self.assertNotEqual(derivative_id[3][1], original_id[3][1])
         self.assertNotEqual(derivative_id[4][1], original_id[4][1])
         self.assertEqual(derivative_id[4][1] > original_id[4][1], True)
@@ -188,8 +204,10 @@ class GarminOverlayTests(unittest.TestCase):
             first, second = a.read_bytes(), b.read_bytes()
         original_id, id_a, id_b = (values(x, 0)[0]
                                   for x in (original, first, second))
-        self.assertEqual(id_a[1][1], 255)
-        self.assertEqual(id_b[1][1], 255)
+        self.assertEqual(id_a[1][1], original_id[1][1])
+        self.assertEqual(id_b[1][1], original_id[1][1])
+        self.assertEqual(id_a[2][1], original_id[2][1])
+        self.assertEqual(id_b[2][1], original_id[2][1])
         self.assertNotEqual(id_a[3][1], original_id[3][1])
         self.assertNotEqual(id_b[3][1], original_id[3][1])
         self.assertNotEqual(id_a[3][1], id_b[3][1])
@@ -201,6 +219,10 @@ class GarminOverlayTests(unittest.TestCase):
                          all_message_data(first, 23))
         self.assertEqual(all_message_data(original, 233),
                          all_message_data(first, 233))
+        self.assertEqual(all_message_data(original, 55),
+                         all_message_data(first, 55))
+        self.assertEqual(values(first, 18)[0][24][1], 3)
+        self.assertEqual(values(first, 18)[0][137][1], 0)
 
     def test_speediance_record_priority_changes_only_hr_byte(self):
         opts = dict(DEFAULT_PRIORITIES, heart_curve="speediance")

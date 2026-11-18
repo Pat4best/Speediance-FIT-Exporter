@@ -36,6 +36,8 @@ EN = {
     "Garmin-originalbasierte FIT-Datei gespeichert:\n%s\n\nSpeediance-Krafttrainingssätze: %d\nGarmin-Geräteinformationen erhalten: %d\nZusätzliche HF-Records: %d\nAußerhalb der gewählten Dauer: %d\n\nGarmin Connect wurde NICHT verändert.":
         "Garmin-based FIT file saved:\n%s\n\nSpeediance strength sets: %d\nGarmin device information preserved: %d\nAdded HR records: %d\nOutside selected duration: %d\n\nGarmin Connect was NOT modified.",
     "Mit Garmin abgleichen…": "Match with Garmin…",
+    "Übungsnamen von Speediance laden…": "Load exercise names from Speediance…",
+
     "GM-Manager-JSON wählen…": "Choose GM Manager JSON…",
     "GM-Manager-History-CSV wählen…": "Choose GM Manager history CSV…",
     "GM-Manager-Trainingshistorie wählen": "Choose GM Manager workout history",

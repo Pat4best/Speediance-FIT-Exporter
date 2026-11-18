@@ -21,7 +21,7 @@ TODAY = date(2026, 11, 18)
 def workout(training_id=511, *, type_=1, day="2026-11-17"):
     return {"training_id": training_id, "day": day, "title": "Synthetic Workout",
             "type": type_, "history_type": type_, "unit": "kg",
-            "duration_min": 25}
+            "duration_min": 25, "calories": 200}
 
 
 def free_lift_payload():

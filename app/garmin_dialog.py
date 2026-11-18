@@ -21,7 +21,7 @@ from speediance_api import APIError
 from garmin_personal import GarminPersonalClient, GarminPersonalError, match_activities
 from preferences import (saved_mappings, saved_weight_multipliers,
                          saved_merge_priorities, save_merge_priorities,
-                         observed_names, remember_names)
+                         remember_names)
 from windows_credentials import (save_garmin_api_key, load_garmin_api_key,
                                  delete_garmin_api_key)
 

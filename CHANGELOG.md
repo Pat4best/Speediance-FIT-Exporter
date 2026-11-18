@@ -1,46 +1,10 @@
-# Changelog
+# Release notes / Änderungsübersicht
 
-Wichtige Änderungen in absteigender Reihenfolge. Frühere Details der Beta-Entwicklung stehen in [docs/Entwicklungshistorie.md](docs/Entwicklungshistorie.md).
+**Speediance FIT Exporter 0.1.35-rc.2**
 
-## 0.1.35-rc.1 – Release Candidate 1 (18. November 2026)
+- [Deutsch – vollständige Änderungsübersicht](docs/de/changelog.md)
+- [English – complete changelog](docs/en/changelog.md)
 
-**Stabilisierungs- und Dokumentationsrelease; keine neuen FIT- oder API-Funktionen.**
+Both files are maintained as matching language versions; the old detailed German-only beta notes are retained in [archive/Entwicklungshistorie.md](archive/Entwicklungshistorie.md).
 
-- Die mit Garmin Connect praktisch bestätigte Zusammenführung aus 0.1.35-beta wird eingefroren: echte Speediance-Sätze + originalbasierte Garmin-FIT, Hersteller-/Produktkennung, Herzfrequenz und Training Effect.
-- Versionskennzeichnung auf `0.1.35-rc.1` geändert.
-- README komplett neu als nachvollziehbarer Einstieg statt 900+ Zeilen historischen Beta-Änderungen.
-- Deutschsprachiges Benutzerhandbuch, englischer Schnellstart, bekannte Einschränkungen, technische Build-Anleitung und RC-Testcheckliste ergänzt.
-- Alte Beta-Entwicklungsnotizen in einen Archivbereich verschoben.
-- Dokumentation und Changelog werden mit dem Windows-Installer mitgeliefert.
-- Veröffentlichung vorerst **private**: eigene Projektlizenz, Garmin-FIT-SDK-Katalog und Speediance-API-Rechtelage sowie die ältere Git-/Actions-Historie benötigen vor einem öffentlichen Repository weitere Prüfung.
-
-**Bekannte Einschränkungen:** Keine Anrechnung von Intensitätsminuten für den untersuchten Garmin-Connect-FIT-Reimport; nicht durch Garmin Connect gelieferte Trainingseinzelsätze können nicht erfunden werden; exakte Satzstartzeiten nicht vollständig verfügbar; keine automatische Aktualisierung oder Ersetzung bereits vorhandener Garmin-Connect-Aktivitäten.
-
-## 0.1.35-beta – Geräteidentität und Training Effect
-
-- Originale `file_id.manufacturer`- und `file_id.product`-Werte aus der Garmin-Quelle bleiben im zusammengeführten FIT erhalten.
-- Neue abgeleitete FIT-Datei behält trotzdem eine eigene Serial-/Erstellungszeit-Identität.
-- Ein kontrollierter Garmin-Connect-Import zeigte daraufhin wieder Training Effect **0,3 aerob / 0,0 anaerob / Belastung 4**, mit vier direkt abgerufenen Speediance-Sätzen.
-- Alle echten Garmin-Geräteinformationen und Sensornachrichten bleiben in der FIT.
-
-## 0.1.34-beta – Direkter Merge und nachvollziehbare Fehler
-
-- Erfolgreicher Abruf absolvierter Speediance-Details aus dem Konto-Cache, einschließlich echter Herzfrequenzwerte.
-- Geschätzte Satzanfänge werden bei negativem Startversatz zur Garmin-Aktivität angepasst; die tatsächlichen gemessenen HF-Zeitpunkte werden nicht verschoben.
-- Spezifische Garmin-FIT-Fehler werden nicht mehr durch generische `ValueError`-Meldungen verschluckt.
-
-## 0.1.33-beta – Zuordnung zum ausgewählten Training
-
-- **Übungen zuordnen…** zeigt bei markierter Einheit ausschließlich deren tatsächliche, kontobezogene lokale Speediance-Daten statt früher global gespeicherter Übungen anderer Workouts.
-- Ohne Auswahl bleiben ältere Übungszuordnungen zugänglich. Offline-Zuordnungsdialog funktioniert auch ohne erfolgreichen Cloud-Abruf.
-
-## 0.1.32-beta – Vorsorgliche Speediance-Sicherung
-
-- Automatisches Sichern verifizierter tatsächlich ausgeführter Sätze für bis zu drei noch nicht gespeicherte Workouts aus den letzten 30 Tagen pro Abruf.
-- Konto/Region/Training-isolierter lokaler Cache; keine geplanten Vorlagen ohne tatsächliche Sätze.
-- Unterstützung für abgeschlossene Free-Lift-Daten und deren tatsächliche Gewichtsherkunft.
-
-## 0.1.31-beta und früher
-
-- Garmin Personal API, Original-FIT-Overlay, Übungszuordnung, Garmin-FIT-Katalog, Export- und Gewichtslogik, mehrsprachige Oberfläche, Speediance-Kalender-/Historienabruf und geschützte Windows-Anmeldeinformationen.
-- Vollständiger Verlauf: [Historische Entwicklungsnotizen](docs/Entwicklungshistorie.md).
+Beide Dateien werden synchron gepflegt; die alten deutschsprachigen Beta-Notizen bleiben als historisches [Archiv](archive/Entwicklungshistorie.md) erhalten.

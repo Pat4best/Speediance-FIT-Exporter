@@ -11,6 +11,7 @@ from garmin_fit_overlay import overlay_garmin_fit, GarminOverlayError
 from gm_manager_import import (GMManagerImportError, load_gm_manager_file,
                                resolve_exercise_names)
 from gm_history_import import GMHistoryCSVError, load_gm_history_file
+from mapping_editor import MappingEditor
 from garmin_local_fit import (
     read_local_garmin_fit, match_local_garmin_fit, LocalGarminFitError,
 )
@@ -18,7 +19,8 @@ from garmin_merge import PRIORITY_LABELS, check_priorities
 from speediance_api import APIError
 from garmin_personal import GarminPersonalClient, GarminPersonalError, match_activities
 from preferences import (saved_mappings, saved_weight_multipliers,
-                         saved_merge_priorities, save_merge_priorities)
+                         saved_merge_priorities, save_merge_priorities,
+                         observed_names, remember_names)
 from windows_credentials import (save_garmin_api_key, load_garmin_api_key,
                                  delete_garmin_api_key)
 
@@ -46,6 +48,26 @@ def details_or_history(client, workout):
             "bitte eine GM-Manager-History-CSV auswählen."
         )
     return detail
+
+
+def mapping_names_for_merge(history, known_names):
+    """Available real exercise names, without querying a missing cloud detail.
+
+    The completed CSV names include (links)/(rechts) for timed movements.
+    Existing user mappings are reused, but no invented exercise names/IDs
+    are generated from template placeholder identifiers.
+    """
+    names = set()
+    for entry in known_names or ():
+        if isinstance(entry, str) and entry.strip():
+            names.add(entry.strip())
+    if isinstance(history, dict):
+        for exercise in history.get("exercises") or ():
+            if isinstance(exercise, dict):
+                name = exercise.get("name")
+                if isinstance(name, str) and name.strip():
+                    names.add(name.strip())
+    return sorted(names, key=str.casefold)
 
 
 class GarminMergeDialog(tk.Toplevel):
@@ -171,6 +193,11 @@ class GarminMergeDialog(tk.Toplevel):
             priority_frame, textvariable=self.gm_manager_status,
             wraplength=700, foreground="#555",
         ).grid(row=5, column=0, columnspan=4, sticky="w", padx=(3, 0))
+        ttk.Button(
+            priority_frame, text=tr("Übungen zuordnen…"),
+            command=self._open_mapping_editor,
+        ).grid(row=6, column=0, columnspan=4, sticky="w",
+               pady=(6, 0), padx=(3, 0))
 
 
         matched = ttk.LabelFrame(outer, text=tr("3 – Passende Garmin-Aktivität wählen"),
@@ -315,6 +342,13 @@ class GarminMergeDialog(tk.Toplevel):
             return
         self.gm_history_import = parsed
         self.gm_manager_import = None
+        # Remember only accepted exercise names, not CSV rows, timestamps,
+        # weights, account IDs or session identifiers.
+        try:
+            remember_names([ex["name"] for ex in parsed["exercises"]
+                            if isinstance(ex.get("name"), str)])
+        except OSError:
+            logger.warning("Could not save CSV exercise names for mapping")
         self.gm_manager_status.set(
             self.app.tr("History-CSV bestätigt: %d Übungen, %d Sätze, %d Kraft-Wiederholungen.") %
             (parsed["exercise_count"], parsed["set_count"], parsed["total_reps"])
@@ -327,6 +361,32 @@ class GarminMergeDialog(tk.Toplevel):
             parsed["timed_set_count"], parsed["side_rows"],
             parsed["estimated_durations"],
         )
+
+    def _open_mapping_editor(self):
+        """Open stored/CSV exercise mappings without a Speediance API call.
+
+        The merge dialog is modal. Transfer the grab to the mapping editor
+        and restore it when that editor closes.
+        """
+        if self.app.busy:
+            return
+        names = mapping_names_for_merge(self.gm_history_import, observed_names())
+        if not names:
+            messagebox.showinfo(
+                self.app.tr("Übungen zuordnen"),
+                self.app.tr(
+                    "Noch keine Übungsnamen verfügbar. Lade zuerst die "
+                    "GM-Manager-History-CSV oder importiere eine abgeschlossene "
+                    "Trainingseinheit von Speediance. Danach kannst du die "
+                    "Übungen manuell den Garmin-Übungen zuordnen."
+                ),
+                parent=self,
+            )
+            return
+        editor = MappingEditor(self, names=names)
+        self.wait_window(editor)
+        if self.winfo_exists():
+            self.grab_set()
 
     def _show_matches(self, candidates, source_name):
         self.candidates = candidates

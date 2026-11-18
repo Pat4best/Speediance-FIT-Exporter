@@ -40,13 +40,11 @@ jobs:
       - name: Upload installer
         uses: actions/upload-artifact@v4
         with:
-          name: SpeedianceFITExporter-Windows-Setup-0.1.35-rc.1
+          name: SpeedianceFITExporter-Windows-Setup-0.1.35-rc.2
           path: |
             dist/SpeedianceFITExporter-Setup.exe
             README.md
             CHANGELOG.md
-            docs/Benutzerhandbuch.md
-            docs/Quick_Start_EN.md
-            docs/Bekannte_Einschraenkungen.md
-            docs/Drittquellen.md
+            docs/de/
+            docs/en/
           if-no-files-found: error

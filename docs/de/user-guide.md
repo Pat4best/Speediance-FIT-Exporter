@@ -1,11 +1,13 @@
 # Speediance FIT Exporter – Benutzerhandbuch
 
-**Version:** 0.1.35-rc.1 (Release Candidate 1)  
+**Version:** 0.1.35-rc.2 (Release Candidate 2)  
 **Plattform:** Windows 10/11  
 **Sprachen der Anwendung:** Deutsch, Englisch  
 **Projektstatus:** Unabhängiges Community-Tool; weder von Speediance noch von Garmin entwickelt oder unterstützt
 
 > **Wichtig:** Diese Anwendung ändert niemals automatisch deine Daten in Garmin Connect. Sie erzeugt lokal eine neue FIT-Datei. Diese muss bei Bedarf manuell importiert werden. Bereits vorhandene Aktivitäten werden **nicht** überschrieben. Intensitätsminuten werden beim FIT-Reimport nach unseren Tests **nicht zusätzlich dem Garmin-Wochenkonto gutgeschrieben**.
+
+[English version](../en/user-guide.md) · [Dokumentationsübersicht](README.md)
 
 ## 1. Wofür ist das Programm?
 
@@ -17,13 +19,13 @@ Die Anwendung funktioniert auch ohne eine kostenpflichtige GM-Manager-Schnittste
 
 ## 2. Installation und erster Start
 
-1. Lade das RC-Paket `SpeedianceFITExporter-Windows-Setup-0.1.35-rc.1` herunter. Bei GitHub liegt es unter **Actions → Windows installer → erfolgreicher RC-Build → Artifacts**. Bei privater Weitergabe erhältst du die ZIP-Datei vom Anbieter.
+1. Lade das RC-Paket `SpeedianceFITExporter-Windows-Setup-0.1.35-rc.2` herunter. Bei GitHub liegt es unter **Actions → Windows installer → erfolgreicher RC-Build → Artifacts**. Bei privater Weitergabe erhältst du die ZIP-Datei vom Anbieter.
 2. Entpacke die ZIP-Datei. Darin liegt `SpeedianceFITExporter-Setup.exe` sowie dieses Handbuch.
 3. Starte die Setup-Datei und folge dem Installationsassistenten. Die Installation erfolgt für den angemeldeten Windows-Benutzer, ohne Administratorrechte.
 4. Starte das Programm über **Start → Speediance FIT Exporter**.
 5. Eine nicht signierte Setup- oder EXE-Datei kann eine Windows-SmartScreen-Warnung auslösen. Führe nur eine Datei aus einer **vertrauenswürdigen Quelle** aus; deaktiviere dafür keine systemweiten Sicherheitsfunktionen.
 
-**Für die Bedienung ist keine Python-Installation erforderlich.** Für Entwicklung und eigene Builds siehe `docs/Entwicklung.md`.
+**Für die Bedienung ist keine Python-Installation erforderlich.** Für Entwicklung und eigene Builds siehe [Entwicklung und eigene Builds](development.md).
 
 ## 3. Speediance anmelden und Trainings laden
 
@@ -116,7 +118,7 @@ Die neue Datei erhält eine eigene Dateiidentität; sie ist **kein unverändert 
 | Bei **Übungen zuordnen…** ist die Liste leer | Das ausgewählte Training hat noch keine gesicherten absolvierten Satzdetails. Optional **Übungsnamen von Speediance laden…** verwenden. |
 | Garmin-Aktivität nicht gefunden | Beide Aktivitäten auf passende Anfangszeit/Dauer prüfen; die Garmin-Uhr muss die Originalaufzeichnung bereits synchronisiert haben. |
 | Garmin-API-Schlüssel funktioniert nicht | Persönlichen Schlüssel für das richtige Konto prüfen, ggf. bei Garmin neu erzeugen. |
-| Nach Import fehlt Training Effect | Prüfen, ob tatsächlich eine **zusammengeführte FIT** auf Basis des Garmin-Originals verwendet wurde und ob der Exporter **0.1.35-rc.1 oder neuer** ist. |
+| Nach Import fehlt Training Effect | Prüfen, ob tatsächlich eine **zusammengeführte FIT** auf Basis des Garmin-Originals verwendet wurde und ob der Exporter **0.1.35-rc.2 oder neuer** ist. |
 | Nach Import fehlen Intensitätsminuten | Bekannte Garmin-Importeinschränkung; reguläre Uhrensynchronisierung bleibt relevant. Es ist **kein nachgewiesener FIT-Writer-Defekt**. |
 | Garmin Connect meldet Duplikat | Die alte Aktivität nicht unbedacht löschen. Der FIT-Import ersetzt keine vorhandene Aktivität. |
 | Windows warnt vor unbekanntem Herausgeber | Der Installer ist nicht codesigniert. Herkunft prüfen, nicht pauschal die Windows-Sicherheit deaktivieren. |
@@ -126,3 +128,4 @@ Die neue Datei erhält eine eigene Dateiidentität; sie ist **kein unverändert 
 Notiere **Programmversion**, die ausgeführte Funktion, die genaue **Fehlermeldung** und ob der Fehler vor oder nach dem Garmin-Abgleich auftrat. Nutze **Diagnose anzeigen…** oder **Diagnoseprotokoll speichern…** und entferne vor einer Weitergabe persönliche Informationen. **Keine Passwörter, API-Schlüssel, Tokens oder fremden FIT-Dateien veröffentlichen.**
 
 Das Projekt ist kein offizielles Produkt von Speediance oder Garmin. Ein geschützter GitHub-Zugang ist für den Betrieb des bereits installierten Programms nicht erforderlich; lediglich der Weg zum Herunterladen des privaten RC-Installers hängt vom Verteiler ab.
+

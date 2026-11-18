@@ -1,6 +1,8 @@
-# Bekannte Einschränkungen – 0.1.35-rc.1
+# Bekannte Einschränkungen – 0.1.35-rc.2
 
-Der **Release Candidate 1** ist funktionsstabilisiert. Die folgenden Punkte sind dokumentierte Einschränkungen, **keine stillschweigend versprochenen Funktionen**.
+[English version](../en/known-limitations.md) · [Dokumentationsübersicht](README.md)
+
+Der **Release Candidate 2** ist funktionsstabilisiert. Die folgenden Punkte sind dokumentierte Einschränkungen, **keine stillschweigend versprochenen Funktionen**.
 
 ## Intensitätsminuten werden beim Garmin-Import nicht neu gutgeschrieben
 
@@ -42,4 +44,5 @@ Die originalen Garmin-Hersteller-/Produktwerte werden aus der authentischen Garm
 
 Lokale Caches können Trainings- und Gesundheitsdaten enthalten. Das Diagnoseprotokoll ist auf technische Metadaten beschränkt, muss vor dem Teilen aber trotzdem überprüft werden. API-Schlüssel, Passwörter, Tokens und Nutzer-FITs gehören **niemals** in öffentliche GitHub-Issues oder Artefakte.
 
-Für öffentliches Open-Source-Hosting siehe [Veröffentlichungscheckliste](Veroeffentlichung_Checkliste.md): Drittanbieter-Lizenz, Rechte an Garmin-Übungskatalogdaten, API-Bedingungen und Git-Historie müssen vorab geklärt werden.
+Für öffentliches Open-Source-Hosting siehe [Veröffentlichungscheckliste](publication-checklist.md): Drittanbieter-Lizenz, Rechte an Garmin-Übungskatalogdaten, API-Bedingungen und Git-Historie müssen vorab geklärt werden.
+

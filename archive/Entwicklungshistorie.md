@@ -1,6 +1,6 @@
 # Historische Entwicklungsnotizen (Beta 0.1.1–0.1.35)
 
-> **Archiv, nicht das aktuelle Benutzerhandbuch.** Diese Datei bewahrt den bisherigen Entwicklungshintergrund unverändert. Aussagen über ungetestete Funktionen, UI-Texte oder ältere Beta-Einschränkungen können heute überholt sein. Verbindlich für den RC sind [README](../README.md), [Benutzerhandbuch](Benutzerhandbuch.md) und [Bekannte Einschränkungen](Bekannte_Einschraenkungen.md).
+> **Archiv, nicht das aktuelle Benutzerhandbuch.** Diese Datei bewahrt den bisherigen Entwicklungshintergrund unverändert. Aussagen über ungetestete Funktionen, UI-Texte oder ältere Beta-Einschränkungen können heute überholt sein. Verbindlich für den RC sind [README](../README.md), [Benutzerhandbuch](../docs/de/user-guide.md) und [Bekannte Einschränkungen](../docs/de/known-limitations.md).
 
 ---
 

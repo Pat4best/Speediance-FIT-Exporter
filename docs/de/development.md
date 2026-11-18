@@ -1,6 +1,8 @@
 # Entwicklung, Tests und eigener Windows-Build
 
-**Ziel:** Technische Nachvollziehbarkeit von **0.1.35-rc.1**; normale Windows-Nutzer benötigen diese Schritte **nicht**.
+[English version](../en/development.md) · [Dokumentationsübersicht](README.md)
+
+**Ziel:** Technische Nachvollziehbarkeit von **0.1.35-rc.2**; normale Windows-Nutzer benötigen diese Schritte **nicht**.
 
 ## Architektur in Kürze
 
@@ -37,7 +39,7 @@ Danach mit installiertem **NSIS**:
 & "${env:ProgramFiles(x86)}\NSIS\makensis.exe" installer.nsi
 ```
 
-Ergebnis: `dist/SpeedianceFITExporter-Setup.exe`. Installer bindet die Benutzer-Dokumentation aus `docs/` und das Changelog ein. **Keine** Endnutzer-FIT-Dateien, gespeicherte Anmeldedaten oder Cacheverzeichnisse in das Repository oder Installer-Build-Verzeichnis kopieren.
+Ergebnis: `dist/SpeedianceFITExporter-Setup.exe`. Installer und CI-Artefakt enthalten die vollständigen Sprachordner `docs/de/` und `docs/en/` einschließlich der beiden Benutzerhandbücher und Änderungsübersichten. **Keine** Endnutzer-FIT-Dateien, gespeicherte Anmeldedaten oder Cacheverzeichnisse in das Repository oder Installer-Build-Verzeichnis kopieren.
 
 CI unter GitHub **Actions → Windows installer** führt zuerst die Tests aus, erstellt nur bei Erfolg die Windows-EXE und das Setup und veröffentlicht das ZIP-Artefakt unter dem Buildlauf.
 
@@ -52,8 +54,9 @@ CI unter GitHub **Actions → Windows installer** führt zuerst die Tests aus, e
 
 ## Tests vor RC-Freigabe
 
-Siehe [RC-Testcheckliste](RC_Testcheckliste.md). Zusätzlich müssen alle CI-Tests auf Windows bestehen. Reale End-to-End-Verbindung von Speediance und Garmin kann nur ein Benutzer mit passenden **eigenen** Accounts bestätigen; keine Live-Anmeldedaten in den Quellcode einfügen.
+Siehe [RC-Testcheckliste](rc-checklist.md). Zusätzlich müssen alle CI-Tests auf Windows bestehen. Reale End-to-End-Verbindung von Speediance und Garmin kann nur ein Benutzer mit passenden **eigenen** Accounts bestätigen; keine Live-Anmeldedaten in den Quellcode einfügen.
 
 ## Rechtliche Veröffentlichung
 
-Vor einer öffentlichen Repo-Freigabe die [Veröffentlichungscheckliste](Veroeffentlichung_Checkliste.md) und [Drittquellenhinweise](Drittquellen.md) lesen. Die Garmin-FIT-Katalogdaten sind aus dem offiziellen Garmin-FIT-SDK abgeleitet. Für diese Daten nicht ohne Prüfung pauschal eine eigene MIT-/Apache-Lizenz behaupten.
+Vor einer öffentlichen Repo-Freigabe die [Veröffentlichungscheckliste](publication-checklist.md) und [Drittquellenhinweise](third-party.md) lesen. Die Garmin-FIT-Katalogdaten sind aus dem offiziellen Garmin-FIT-SDK abgeleitet. Für diese Daten nicht ohne Prüfung pauschal eine eigene MIT-/Apache-Lizenz behaupten.
+

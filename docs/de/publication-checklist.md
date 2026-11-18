@@ -1,5 +1,7 @@
 # Checkliste: Öffentliches GitHub-Repository
 
+[English version](../en/publication-checklist.md) · [Dokumentationsübersicht](README.md)
+
 **Projekt:** Speediance FIT Exporter · **Aktueller Status: nicht zur Veröffentlichung freigegeben**  
 **Ziel:** zunächst sicher privat testen, dann nach Rechte-/Sicherheitsprüfung ggf. offen zur gemeinsamen Weiterentwicklung veröffentlichen.
 
@@ -31,3 +33,4 @@ Dies ist eine **technische und organisatorische Vorprüfung, keine Rechtsberatun
 Falls der bestehende Repository-Verlauf sensible Daten enthält: **Nicht blind auf Public schalten**. Erst unabhängig von der Lizenzfrage abwägen, ob ein neuer, sauber zusammengestellter öffentlicher Projekt-Stand ohne Historie geeigneter ist. Ein neues Repository löst **nicht** die Lizenzfrage des Garmin-Katalogs oder API-Nutzungsbedingungen.
 
 Bis zur Klärung bleibt der RC **privat**. Der **fertige Installer kann nach gesonderter Prüfung** testweise an ausgewählte Personen weitergegeben werden; auch dafür sind Lizenz-/Nutzungsrechte zu beachten.
+

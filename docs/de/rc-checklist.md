@@ -1,6 +1,8 @@
-# Abnahmecheckliste – 0.1.35-rc.1
+# Abnahmecheckliste – 0.1.35-rc.2
 
-Diese Checkliste dokumentiert die Freigabekriterien für **Release Candidate 1**. Sie enthält keine privaten Zugangsdaten oder FIT-Dateien und darf mit dem RC verteilt werden.
+[English version](../en/rc-checklist.md) · [Dokumentationsübersicht](README.md)
+
+Diese Checkliste dokumentiert die Freigabekriterien für **Release Candidate 2**. Sie enthält keine privaten Zugangsdaten oder FIT-Dateien und darf mit dem RC verteilt werden.
 
 ## Automatisch (GitHub Actions / Windows)
 
@@ -8,7 +10,7 @@ Diese Checkliste dokumentiert die Freigabekriterien für **Release Candidate 1**
 - [ ] PyInstaller-`SpeedianceFITExporter.exe` erstellt
 - [ ] NSIS-`SpeedianceFITExporter-Setup.exe` erstellt
 - [ ] GitHub-Actions-Artefakt mit Installer **und** Endnutzer-Dokumentation vorhanden
-- [ ] Version der Anwendung ist `0.1.35-rc.1`
+- [ ] Version der Anwendung ist `0.1.35-rc.2`
 - [ ] Zusammengeführte FIT: ursprünglicher Garmin-Hersteller / Produkt, neue Dateiidentität, Training Effect und Garmin-Geräte-/Sensordaten erhalten
 - [ ] Keine versehentliche Einbeziehung von privaten Kontodaten oder FIT-Dateien in Installer/Artefakte
 
@@ -40,3 +42,4 @@ Diese Checkliste dokumentiert die Freigabekriterien für **Release Candidate 1**
 - 0.1.35-beta: **164 Windows-Unittests bestanden**, Installer erfolgreich
 - Ein Nutzer hat den vollständigen direkten Speediance→Garmin-Personal-API→FIT-Import und die wiederhergestellten Training-Effect-Werte bestätigt
 - RC-Softwareänderungen sind auf Dokumentation, Versionsanzeige und Installer-Paketierung beschränkt
+

@@ -1,8 +1,8 @@
 # Speediance FIT Exporter – English quick start
 
-**Version:** 0.1.35-rc.1 · **Windows 10/11** · Independent third-party community tool (not affiliated with Speediance or Garmin)
+**Version:** 0.1.35-rc.2 · **Windows 10/11** · Independent third-party community tool (not affiliated with Speediance or Garmin)
 
-For complete instructions and troubleshooting, see the [German user manual](Benutzerhandbuch.md). The application itself supports **English** through the language selector in the top right corner.
+For full instructions in English, see the [complete User Manual](user-guide.md). [Deutsche Kurzfassung](../de/quick-start.md) · [Documentation index](README.md). The application supports **English** via the language selector at the top right.
 
 ## Purpose
 
@@ -12,7 +12,7 @@ No paid GM Manager API, manually downloaded Garmin FIT file or CSV export is req
 
 ## Install
 
-1. Download the trusted `SpeedianceFITExporter-Windows-Setup-0.1.35-rc.1` ZIP artifact from the project's successful GitHub Actions Windows installer run, or obtain it from the distributor.
+1. Download the trusted `SpeedianceFITExporter-Windows-Setup-0.1.35-rc.2` ZIP artifact from the project's successful GitHub Actions Windows installer run, or obtain it from the distributor.
 2. Extract and run `SpeedianceFITExporter-Setup.exe`; installation is per Windows user and does not require Python or administrator access.
 3. Start **Speediance FIT Exporter** from the Windows Start menu. The installer is currently **unsigned**; only run it if you trust the source.
 

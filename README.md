@@ -1,4 +1,4 @@
-# Speediance FIT Exporter (Beta 0.1.33)
+# Speediance FIT Exporter (Beta 0.1.34)
 
 Lokale Windows-10/11-Anwendung zum Abruf abgeschlossener Speediance-Trainingseinheiten aus dem eigenen Account und zum Export als Garmin-FIT-Aktivitäten. Die Speediance-API ist **inoffiziell**; der Login ist ohne echten Testaccount nicht verifiziert.
 
@@ -806,6 +806,48 @@ Pool, auch wenn ein einzelnes Training markiert war.
   Gewichtsmultiplikatoren werden **nicht gelöscht oder geändert**.
   Free-Lift-Unterstützung, automatische Sicherung und der
   Garmin-FIT-Merge aus 0.1.32 bleiben unangetastet.
+
+## 0.1.34-beta – Garmin-Merge mit direkt von Speediance gesicherten Sätzen
+
+**Realer Test vom 18.11.2026:** `Your First Training with Gym Monster`
+(13.11.) wurde erfolgreich über den kontobezogenen Cache geladen
+(**1 Übung, 4 Sätze, 362 echte Herzfrequenzwerte**), danach meldete der
+Garmin-Abgleich lediglich `GarminOverlayError`. Die Datenbeschaffung
+funktionierte also; die Ursache lag danach auf dem FIT-Merge-Pfad.
+Der genaue Fehler war im Log nicht unterscheidbar.
+
+Zwei konkrete Fehlerbilder sind deshalb behoben:
+
+- Der Garmin-Exportdialog fängt **`GarminOverlayError` (Unterklasse
+  `ValueError`) und `GarminFitError`** jetzt vor dem generischen
+  ValueError ab. Der konkrete, eigens formulierte Fehlertext bleibt
+  in der Oberfläche erhalten; fremde/unerwartete Fehlermeldungen
+  bleiben aus Datenschutzgründen weiterhin anonymisiert.
+- **Auch echte direkt geladene Speediance-Satzdaten enthalten bislang
+  keine absoluten SET-Anfangszeiten**, sondern nur gemessene
+  Wiederholungen, Gewichte und Satzdauern. Begann die Garmin-Uhr
+  später als Speediance, konnte der geschätzte `strength_start_offset`
+  negativ werden, was der FIT-Writer zurückwies. Diese geschätzten
+  **SET-Zeitpunkte** werden nun bei negativem Offset wie bereits bei
+  der bestätigten History-CSV auf den Garmin-Aktivitätsbeginn
+  ausgerichtet. **Echte Garmin- und Speediance-Herzfrequenz-
+  Messzeitpunkte bleiben absolut unverändert.**
+- Das Diagnoseprotokoll meldet ausschließlich datenschutzverträgliche
+  relative Werte: `Garmin merge set timeline: raw_offset_sec=...`
+  und `chosen_offset_sec=...`, außerdem die Eingangsquelle und
+  Zahl übernommener Sätze. Keine Token, Account-IDs oder absoluten
+  Trainingszeiten.
+
+Neue Regressionen prüfen direkt geladene **4 Sätze**, negativen
+95-Sekunden-Startversatz, unveränderte Garmin-Record- und
+Geräte-Nachrichten sowie aussagekräftige Fehlermeldungen.
+
+**Wichtig:** Der konkrete `GarminOverlayError` aus dem Log von
+09:59 Uhr ist nicht allein anhand seines Klassennamens eindeutig
+zuordenbar. Diese Version behebt den belegten Meldungsverlust und
+einen plausiblen Satzzeitfehler; ein erneuter Live-Test ist nötig.
+Es gibt weiterhin keine Behauptung, Garmin Connect würde alle
+Training-Effect-Metriken aus neuen Importen wiederherstellen.
 
 ## Windows-Installer
 

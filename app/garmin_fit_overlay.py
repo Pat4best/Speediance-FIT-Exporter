@@ -16,6 +16,7 @@ from secrets import randbits
 from pathlib import Path
 from tempfile import TemporaryDirectory
 import struct
+import logging
 
 from fitwriter import crc, stamp, write_fit
 from garmin_fit_reader import GarminFitError, _decoded_scalar
@@ -229,6 +230,16 @@ def overlay_garmin_fit(original, speediance, destination, priorities=None,
     wire = parse_fit_wire(original)
     original_metrics = read_garmin_activity(original)
     merged, meta = merge_workout(speediance, original_metrics, priorities)
+    # Privacy-safe relative offsets distinguish estimated SET placement from
+    # original Garmin/Speediance sensor timestamps; no dates, IDs or HR data.
+    logging.getLogger("speediance_fit").info(
+        "Garmin merge set timeline: raw_offset_sec=%d "
+        "chosen_offset_sec=%d duration_sec=%d estimated_rebase=%s",
+        meta["set_timing_original_offset_seconds"],
+        merged["strength_start_offset"],
+        meta["duration_seconds"],
+        meta["set_timing_aligned_to_activity_start"],
+    )
     start = datetime.fromisoformat(merged["started_at"])
     start_ts = stamp(start)
     duration = int(merged["duration_seconds"])

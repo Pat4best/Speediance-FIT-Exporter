@@ -8,6 +8,7 @@ import webbrowser
 
 from fitwriter import write_fit
 from garmin_fit_overlay import overlay_garmin_fit, GarminOverlayError
+from garmin_fit_reader import GarminFitError
 from gm_manager_import import (GMManagerImportError, load_gm_manager_file,
                                resolve_exercise_names)
 from gm_history_import import GMHistoryCSVError, load_gm_history_file
@@ -581,6 +582,13 @@ class GarminMergeDialog(tk.Toplevel):
                 else confirmed_gm["set_count"] if confirmed_gm is not None
                 else None
             )
+            logger.info(
+                "Garmin merge input ready: original_source=%s "
+                "original_fit_bytes=%d speediance_completed_sets=%d",
+                source, len(fit),
+                sum(len(ex.get("sets") or [])
+                    for ex in detail.get("exercises") or []),
+            )
             try:
                 result, meta = overlay_garmin_fit(
                     fit, detail, path, priority,
@@ -588,9 +596,16 @@ class GarminMergeDialog(tk.Toplevel):
                     weight_overrides=saved_weight_multipliers(),
                     expected_set_count=expected_sets,
                 )
+            except (GarminOverlayError, GarminFitError):
+                # Both are explicit, source-owned and safe error messages.
+                # GarminOverlayError subclasses ValueError: the old catch-all
+                # swallowed its true reason, preventing diagnosis in 0.1.33.
+                logger.warning("Garmin merge rejected at FIT validation/overlay")
+                raise
             except ValueError:
-                # Do not reduce a real export failure to the useless dialog
-                # "ValueError". Avoid exposing private timestamp values.
+                # Other raw ValueErrors may contain private or unexpected
+                # data. Show a safe generic message rather than their text.
+                logger.warning("Garmin merge rejected invalid source value")
                 raise GarminOverlayError(
                     "Ungültige FIT-Satzdaten oder Zeitzuordnung. "
                     "Es wurde keine zusammengeführte FIT-Datei erzeugt."

@@ -153,25 +153,21 @@ def merge_workout(speediance, garmin, priorities=None):
     output = dict(speediance)
     output["started_at"] = selected_start.isoformat()
     output["duration_seconds"] = duration
-    # Recorded Speediance SETs retain their original relative clock
-    # placement where possible. GM Manager history/confirmed templates only
-    # contain per-set durations, not genuine set start times. If the Garmin
-    # recording begins *after* the Speediance session (as in the genuine
-    # 2026-11-16 recording), negative set offsets are not representable inside
-    # the Garmin-selected activity. Anchor estimated SET times to Garmin's
-    # beginning without touching genuine Garmin records or HR timestamps.
+    # The current FIT writer receives completed reps, load and duration, but
+    # *never* original per-set start timestamps. This is equally true for
+    # recorded Speediance API/cache data and imported GM Manager rows.
+    # Their SET positions are always estimates, unlike genuine Speediance
+    # heart-rate observations, which were transformed independently above.
+    #
+    # When the watch started AFTER Speediance, a negative estimated SET
+    # offset cannot be represented within the Garmin-selected activity.
+    # Anchor only these estimated SETs to the watch's start. Leave actual
+    # Garmin and Speediance HR samples at their measured absolute times.
     raw_strength_offset = int(round(
         speed_start.timestamp() - selected_start.timestamp()
     ))
-    estimated_set_sources = ("gm_manager_history_csv", "gm_manager_confirmed")
-    aligned_set_timing = (
-        speediance.get("_set_source") in estimated_set_sources
-        and raw_strength_offset < 0
-    )
-    output["strength_start_offset"] = (
-        max(0, raw_strength_offset) if aligned_set_timing
-        else raw_strength_offset
-    )
+    aligned_set_timing = raw_strength_offset < 0
+    output["strength_start_offset"] = max(0, raw_strength_offset)
     output["set_timing_aligned_to_activity_start"] = aligned_set_timing
     output["duration_min"] = duration / 60
     output["finished_at"] = None
@@ -198,4 +194,5 @@ def merge_workout(speediance, garmin, priorities=None):
         "start": selected_start,
         "duration_seconds": duration,
         "set_timing_aligned_to_activity_start": aligned_set_timing,
+        "set_timing_original_offset_seconds": raw_strength_offset,
     }

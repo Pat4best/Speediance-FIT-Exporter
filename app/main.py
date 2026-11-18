@@ -23,7 +23,7 @@ from preferences import load_language, save_language
 from i18n import translate
 
 APP = "Speediance FIT Exporter"
-VERSION = "0.1.31-beta"
+VERSION = "0.1.32-beta"
 DATA = Path(os.environ.get("LOCALAPPDATA", Path.home())) / "SpeedianceFITExporter"
 DATA.mkdir(parents=True, exist_ok=True)
 LOG = DATA / "diagnose.log"
@@ -487,7 +487,16 @@ class App(tk.Tk):
             messagebox.showerror(self.tr("Datum"), self.tr("Bitte gültigen Zeitraum bis zu 3 Jahren wählen."))
             return
 
-        def done(items):
+        def job():
+            items = self.client.list_workouts(start, end)
+            # The first successful download of *completed* Speediance sets
+            # protects them against later template deletion. Bounded, read-only
+            # requests run in the same existing worker, never in Tk callbacks.
+            snapshot = self.client.snapshot_recent_workouts(items)
+            return items, snapshot
+
+        def done(result):
+            items, snapshot = result
             self.sessions = items
             for row in self.table.get_children():
                 self.table.delete(row)
@@ -502,8 +511,14 @@ class App(tk.Tk):
                 self.tr("%d abgeschlossene Workouts geladen (Historie: +%d; frühere API: +%d; anderer Gerätetyp: +%d).") %
                 (len(items), history, recovered, other_device)
             )
+            if snapshot["saved"]:
+                self.status.set(
+                    self.status.get() +
+                    (self.tr(" Automatisch gesichert: %d neue Speediance-Trainingsdetails.")
+                     % snapshot["saved"])
+                )
 
-        self.run_job(lambda: self.client.list_workouts(start, end), done)
+        self.run_job(job, done)
 
     def inspect_selected_workout(self):
         """Inspect schema only for the selected Speediance session."""

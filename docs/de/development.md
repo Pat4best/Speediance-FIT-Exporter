@@ -1,5 +1,7 @@
 # Entwicklung, Tests und eigener Windows-Build
 
+[English version](../en/development.md) · [Dokumentationsübersicht](README.md)
+
 **Ziel:** Technische Nachvollziehbarkeit von **0.1.35-rc.2**; normale Windows-Nutzer benötigen diese Schritte **nicht**.
 
 ## Architektur in Kürze
@@ -37,7 +39,7 @@ Danach mit installiertem **NSIS**:
 & "${env:ProgramFiles(x86)}\NSIS\makensis.exe" installer.nsi
 ```
 
-Ergebnis: `dist/SpeedianceFITExporter-Setup.exe`. Installer bindet die Benutzer-Dokumentation aus `docs/` und das Changelog ein. **Keine** Endnutzer-FIT-Dateien, gespeicherte Anmeldedaten oder Cacheverzeichnisse in das Repository oder Installer-Build-Verzeichnis kopieren.
+Ergebnis: `dist/SpeedianceFITExporter-Setup.exe`. Installer und CI-Artefakt enthalten die vollständigen Sprachordner `docs/de/` und `docs/en/` einschließlich der beiden Benutzerhandbücher und Änderungsübersichten. **Keine** Endnutzer-FIT-Dateien, gespeicherte Anmeldedaten oder Cacheverzeichnisse in das Repository oder Installer-Build-Verzeichnis kopieren.
 
 CI unter GitHub **Actions → Windows installer** führt zuerst die Tests aus, erstellt nur bei Erfolg die Windows-EXE und das Setup und veröffentlicht das ZIP-Artefakt unter dem Buildlauf.
 

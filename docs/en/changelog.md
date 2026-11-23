@@ -4,6 +4,11 @@
 
 Key changes in reverse chronological order. For detailed early beta history, see the [German archive](../../archive/Entwicklungshistorie.md).
 
+## 0.1.36-beta – Speediance and Garmin merge (November 23, 2026)
+
+- The merged FIT exports a repetition count for rep-based sets and a duration for timed sets.
+- Development resumes in beta. A new release candidate will follow after acceptance testing.
+
 ## 0.1.35-rc.2 – Full bilingual documentation (November 18, 2026)
 
 **Documentation and packaging only; FIT merge and API behavior are unchanged.**

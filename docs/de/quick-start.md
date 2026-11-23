@@ -1,6 +1,6 @@
 # Speediance FIT Exporter – Schnellstart
 
-**Version:** 0.1.35-rc.2 · **Windows 10/11** · Unabhängiges Community-Tool (keine Verbindung zu Speediance oder Garmin)
+**Version:** 0.1.36-beta · **Windows 10/11** · Unabhängiges Community-Tool (keine Verbindung zu Speediance oder Garmin)
 
 Für alle Einzelheiten und Fehlerbehebung siehe das [vollständige Benutzerhandbuch](user-guide.md). [English quick start](../en/quick-start.md) · [Dokumentationsübersicht](README.md). Die Anwendung kann oben rechts zwischen Deutsch und Englisch umgeschaltet werden.
 
@@ -12,7 +12,7 @@ Keine kostenpflichtige GM-Manager-Schnittstelle, keine lokal heruntergeladene Ga
 
 ## Installation
 
-1. Das vertrauenswürdige ZIP-Artefakt `SpeedianceFITExporter-Windows-Setup-0.1.35-rc.2` aus einem erfolgreichen Windows-Installer-Build herunterladen oder vom Verteiler erhalten.
+1. Das vertrauenswürdige ZIP-Artefakt `SpeedianceFITExporter-Windows-Setup-0.1.36-beta` aus einem erfolgreichen Windows-Installer-Build herunterladen oder vom Verteiler erhalten.
 2. ZIP entpacken, `SpeedianceFITExporter-Setup.exe` starten. Keine Python-Installation und keine Administratorrechte erforderlich.
 3. Über das Windows-Startmenü **Speediance FIT Exporter** öffnen. Die Anwendung ist noch nicht digital signiert; nur aus vertrauenswürdiger Quelle ausführen.
 

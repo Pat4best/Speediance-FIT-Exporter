@@ -1,10 +1,10 @@
 Unicode True
-Name "Speediance FIT Exporter 0.1.35-rc.2"
+Name "Speediance FIT Exporter 0.1.36-beta"
 OutFile "dist\SpeedianceFITExporter-Setup.exe"
-VIProductVersion "0.1.35.2"
+VIProductVersion "0.1.36.0"
 VIAddVersionKey "ProductName" "Speediance FIT Exporter"
-VIAddVersionKey "FileDescription" "Speediance FIT Exporter Release Candidate Installer"
-VIAddVersionKey "ProductVersion" "0.1.35-rc.2"
+VIAddVersionKey "FileDescription" "Speediance FIT Exporter Beta Installer"
+VIAddVersionKey "ProductVersion" "0.1.36-beta"
 InstallDir "$LOCALAPPDATA\Programs\Speediance FIT Exporter"
 RequestExecutionLevel user
 Page directory

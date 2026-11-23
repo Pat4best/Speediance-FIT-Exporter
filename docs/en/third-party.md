@@ -1,6 +1,6 @@
 # Third-party sources, trademarks and license review
 
-**Version:** 0.1.35-rc.2 · **Preliminary technical assessment, not legal advice**
+**Version:** 0.1.36-beta · **Preliminary technical assessment, not legal advice**
 
 Speediance FIT Exporter is independent software. Runtime code largely uses the Python standard library; Windows packaging uses PyInstaller and NSIS. Brand names, SDK-derived data, and hosted APIs each have distinct rights and conditions.
 

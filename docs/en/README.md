@@ -1,6 +1,6 @@
 # Documentation – English
 
-**Speediance FIT Exporter 0.1.35-rc.2** · Windows 10/11 · Independent community project
+**Speediance FIT Exporter 0.1.36-beta** · Windows 10/11 · Independent community project
 
 [Deutsche Dokumentation](../de/README.md) · [Project home](../../README.md)
 
@@ -11,7 +11,7 @@ The maintained documentation uses **two synchronized language directories**, `do
 - [Quick start](quick-start.md) – installation and the direct Speediance→Garmin workflow
 - [Complete user manual](user-guide.md) – all features, exercise mapping, Garmin Personal API, imports, privacy and troubleshooting
 - [Known limitations](known-limitations.md) – Intensity Minutes, estimated SET timing, missing Speediance details and duplicates
-- [Changelog](changelog.md) – RC versions and earlier beta milestones
+- [Changelog](changelog.md) – Beta and RC milestones
 
 ## For developers and distributors
 
@@ -24,4 +24,4 @@ The maintained documentation uses **two synchronized language directories**, `do
 
 The original 900+ lines of detailed beta-development notes are retained as an **unmaintained German-language historical archive** in [archive/Entwicklungshistorie.md](../../archive/Entwicklungshistorie.md). The archive is **outside the active mirrored documentation** and may contain outdated instructions.
 
-**Important:** The release candidate never modifies Garmin Connect automatically. In our tested FIT import, weekly Intensity Minutes were not newly credited. The repository stays private pending independent rights and security review.
+**Important:** The beta version never modifies Garmin Connect automatically. In our tested FIT import, weekly Intensity Minutes were not newly credited. The repository stays private pending independent rights and security review.

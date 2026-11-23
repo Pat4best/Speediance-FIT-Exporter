@@ -1,6 +1,6 @@
 # Speediance FIT Exporter
 
-**0.1.35-rc.2 · Release Candidate 2 · Windows 10/11**  
+**0.1.36-beta · Beta · Windows 10/11**
 Independent third-party community tool · Unabhängiges, inoffizielles Community-Projekt
 
 Merge actually completed **Speediance strength-training sets** with your **original Garmin FIT activity**. Keep recorded Garmin heart rate, device information and Training Effect while adding genuine Speediance exercises, repetitions and weights. The program produces a new local FIT file; it **never automatically changes Garmin Connect**.
@@ -18,7 +18,7 @@ Both language directories contain **the same nine file names and topics**, inclu
 
 ## Setup / Installation
 
-1. Download the trusted `SpeedianceFITExporter-Windows-Setup-0.1.35-rc.2` ZIP from [GitHub Actions – Windows installer](https://github.com/Pat4best/Speediance-FIT-Exporter/actions/workflows/windows-installer.yml) or receive it from your distributor. Lade die RC-ZIP aus dem erfolgreichen Windows-Build oder vom Verteiler herunter.
+1. Download the trusted `SpeedianceFITExporter-Windows-Setup-0.1.36-beta` ZIP from [GitHub Actions – Windows installer](https://github.com/Pat4best/Speediance-FIT-Exporter/actions/workflows/windows-installer.yml) or receive it from your distributor. Lade die Beta-ZIP aus dem erfolgreichen Windows-Build oder vom Verteiler herunter.
 2. Extract and run `SpeedianceFITExporter-Setup.exe`. No Python installation or administrator permissions are needed. ZIP entpacken und Setup starten; keine Python-Installation erforderlich.
 3. Launch the application, sign in to your **own Speediance account**, load completed workouts, choose one workout, and select **Mit Garmin abgleichen… / Match with Garmin…**. Melde dich bei deinem eigenen Speediance-Konto an, lade abgeschlossene Trainings, markiere eine Einheit und öffne den Garmin-Abgleich.
 4. Use your **own Garmin Personal API key**, match the original Garmin activity, save the merged FIT, and **manually** import it through Garmin Connect Web. Erstelle deinen eigenen Garmin-Personal-API-Schlüssel, wähle die passende Originalaktivität und importiere die gespeicherte FIT bei Bedarf **manuell**.

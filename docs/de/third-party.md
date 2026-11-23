@@ -2,7 +2,7 @@
 
 [English version](../en/third-party.md) · [Dokumentationsübersicht](README.md)
 
-**Stand:** 0.1.35-rc.2 · **Vorläufige Bestandsaufnahme, keine Rechtsberatung**
+**Stand:** 0.1.36-beta · **Vorläufige Bestandsaufnahme, keine Rechtsberatung**
 
 Der Speediance FIT Exporter ist unabhängige Software. Der Quellcode besteht überwiegend aus Python-Standardbibliothek-basierten Komponenten; zur Erstellung des Windows-Installers werden PyInstaller und NSIS verwendet. Externe Marken, Protokollprofile, Server-APIs und deren Nutzungsrechte sind davon zu unterscheiden.
 
@@ -45,5 +45,5 @@ Hinweis: Der Programmname beschreibt nur die Datenquelle; Speediance darf nicht 
 
 „Speediance“, „Garmin“, „Garmin Connect“, „Gym Monster“ und zugehörige Marken sind Eigentum ihrer jeweiligen Inhaber. Kein Sponsoring, keine Zertifizierung, keine offizielle Partnerschaft. Keine Logos/Markenassets als eigenes Markenlogo verwenden. Für Veröffentlichung, Download-Seiten und README klar die unabhängige Herkunft kennzeichnen.
 
-**Status:** Diese Datei ist **keine Rechtefreigabe** und ersetzt keine rechtliche Prüfung. Bis zur Klärung der FIT-Katalog-Rechte, Speediance-Bedingungen und der Repository-Historie bleibt der Release Candidate **privat**.
+**Status:** Diese Datei ist **keine Rechtefreigabe** und ersetzt keine rechtliche Prüfung. Bis zur Klärung der FIT-Katalog-Rechte, Speediance-Bedingungen und der Repository-Historie bleibt die Verteilung **privat**.
 

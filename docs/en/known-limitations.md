@@ -1,6 +1,6 @@
-# Known limitations – 0.1.35-rc.2
+# Known limitations – 0.1.36-beta
 
-Release Candidate 2 is a stabilization and documentation release. The following are explicitly documented limits, **not promised features**.
+This version is in beta development. The following are explicitly documented limits, **not promised features**.
 
 [Deutsche Version](../de/known-limitations.md) · [Documentation index](README.md)
 

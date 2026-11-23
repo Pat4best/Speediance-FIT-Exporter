@@ -1,8 +1,8 @@
-# Bekannte Einschränkungen – 0.1.35-rc.2
+# Bekannte Einschränkungen – 0.1.36-beta
 
 [English version](../en/known-limitations.md) · [Dokumentationsübersicht](README.md)
 
-Der **Release Candidate 2** ist funktionsstabilisiert. Die folgenden Punkte sind dokumentierte Einschränkungen, **keine stillschweigend versprochenen Funktionen**.
+Diese Version befindet sich in der Beta-Entwicklung. Die folgenden Punkte sind dokumentierte Einschränkungen, **keine stillschweigend versprochenen Funktionen**.
 
 ## Intensitätsminuten werden beim Garmin-Import nicht neu gutgeschrieben
 

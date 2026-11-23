@@ -1,6 +1,6 @@
 # Release notes / Änderungsübersicht
 
-**Speediance FIT Exporter 0.1.35-rc.2**
+**Speediance FIT Exporter 0.1.36-beta**
 
 - [Deutsch – vollständige Änderungsübersicht](docs/de/changelog.md)
 - [English – complete changelog](docs/en/changelog.md)

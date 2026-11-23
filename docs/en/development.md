@@ -1,6 +1,6 @@
 # Development, tests and Windows builds
 
-**Target:** Technical reference for **0.1.35-rc.2**. Regular Windows users do **not** need these steps.
+**Target:** Technical reference for **0.1.36-beta**. Regular Windows users do **not** need these steps.
 
 [Deutsche Version](../de/development.md) · [Documentation index](README.md)
 

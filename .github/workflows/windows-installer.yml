@@ -40,7 +40,7 @@ jobs:
       - name: Upload installer
         uses: actions/upload-artifact@v4
         with:
-          name: SpeedianceFITExporter-Windows-Setup-0.1.35-rc.2
+          name: SpeedianceFITExporter-Windows-Setup-0.1.36-beta
           path: |
             dist/SpeedianceFITExporter-Setup.exe
             README.md

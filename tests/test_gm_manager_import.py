@@ -138,7 +138,7 @@ class GMManagerImportTests(unittest.TestCase):
         self.assertEqual(metadata["speediance_repetitions"], 184)
         self.assertEqual(metadata["speediance_source"], "gm_manager_confirmed")
         self.assertEqual(len(values(emitted, 225)), 24)
-        self.assertEqual(values(emitted, 225)[0][3][1], 0)
+        self.assertNotIn(3, values(emitted, 225)[0])
         self.assertEqual(values(emitted, 225)[2][3][1], 10)
         self.assertAlmostEqual(values(emitted, 225)[2][4][1] / 16, 13)
         self.assertAlmostEqual(values(emitted, 225)[2 + 6][4][1] / 16, 17)

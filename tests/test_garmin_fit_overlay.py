@@ -270,10 +270,11 @@ class GarminOverlayTests(unittest.TestCase):
 
     def test_timed_exercises_do_not_inflate_repetition_summary(self):
         speed = speediance_executed()
+        speed["exercises"][0]["sets"][0]["seconds"] = 10
         speed["exercises"].append({
             "name": "Cardio ski timed",
             "completion_method": 2,
-            "sets": [{"reps": 300, "weight": 0, "seconds": 300}],
+            "sets": [{"reps": 30, "weight": 0, "seconds": 30}],
         })
         # Timed sets still exist as Speediance SET messages but 300 seconds
         # must not become 300 completed strength repetitions.
@@ -281,10 +282,15 @@ class GarminOverlayTests(unittest.TestCase):
             file, meta = overlay_garmin_fit(
                 original_garmin_fit(), speed,
                 Path(folder) / "timed-ski.fit")
-            session = values(file.read_bytes(), 18)[0]
+            result = file.read_bytes()
+        sets = values(result, 225)
+        self.assertEqual([entry[3][1] for entry in sets[:2]], [10, 10])
+        self.assertTrue(all(0 not in entry for entry in sets[:2]))
+        self.assertNotIn(3, sets[2])
+        self.assertEqual(sets[2][0][1], 30000)
         self.assertEqual(meta["new_speediance_sets"], 3)
         self.assertEqual(meta["speediance_repetitions"], 20)
-        self.assertEqual(session[10][1], 20)
+        self.assertEqual(values(result, 18)[0][10][1], 20)
 
     def test_history_only_merge_refuses_a_garmin_only_pseudo_success(self):
         original = original_garmin_fit()

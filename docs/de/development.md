@@ -2,7 +2,7 @@
 
 [English version](../en/development.md) · [Dokumentationsübersicht](README.md)
 
-**Ziel:** Technische Nachvollziehbarkeit von **0.1.35-rc.2**; normale Windows-Nutzer benötigen diese Schritte **nicht**.
+**Ziel:** Technische Nachvollziehbarkeit von **0.1.36-beta**; normale Windows-Nutzer benötigen diese Schritte **nicht**.
 
 ## Architektur in Kürze
 

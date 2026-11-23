@@ -1,6 +1,6 @@
 # Speediance FIT Exporter – User Manual
 
-**Version:** 0.1.35-rc.2 (Release Candidate 2)  
+**Version:** 0.1.36-beta (Beta)
 **Platform:** Windows 10/11  
 **Application languages:** German and English  
 **Project status:** Independent community software; neither developed nor endorsed by Speediance or Garmin
@@ -19,7 +19,7 @@ You do not need a paid GM Manager service, a CSV export, or a Garmin FIT file do
 
 ## 2. Installation and first launch
 
-1. Obtain the `SpeedianceFITExporter-Windows-Setup-0.1.35-rc.2` ZIP package. In the private project it is available under **GitHub Actions → Windows installer → successful RC build → Artifacts**, or you may receive it directly from your distributor.
+1. Obtain the `SpeedianceFITExporter-Windows-Setup-0.1.36-beta` ZIP package. In the private project it is available under **GitHub Actions → Windows installer → successful beta build → Artifacts**, or you may receive it directly from your distributor.
 2. Extract the ZIP file. It contains `SpeedianceFITExporter-Setup.exe` and this manual.
 3. Run the installer and follow the wizard. Installation is performed for the current Windows user without administrator permissions.
 4. Launch the program from **Start → Speediance FIT Exporter**.
@@ -88,7 +88,7 @@ The Garmin merge dialog also retains optional GM Manager JSON/History CSV import
 
 ## 7. Which Garmin data is preserved?
 
-The authentic Garmin FIT is the base of the merge. Original device information, proprietary messages and recorded Garmin heart-rate records are preserved. The watch-recorded **Training Effect fields** also stay in the FIT. The release candidate additionally keeps the original Garmin manufacturer and product values. A real Garmin Connect import test of the November 13, 2026 workout displayed **0.3 aerobic / 0.0 anaerobic Training Effect, training load 4**, and **four Speediance sets** after the merge.
+The authentic Garmin FIT is the base of the merge. Original device information, proprietary messages and recorded Garmin heart-rate records are preserved. The watch-recorded **Training Effect fields** also stay in the FIT. The exporter also keeps the original Garmin manufacturer and product values. A real Garmin Connect import test of the November 13, 2026 workout displayed **0.3 aerobic / 0.0 anaerobic Training Effect, training load 4**, and **four Speediance sets** after the merge.
 
 The new output FIT has a fresh file identity. It is **an edited derivative, not an unchanged Garmin device recording**. Selecting Speediance for individual priority settings can intentionally change certain session-summary fields.
 

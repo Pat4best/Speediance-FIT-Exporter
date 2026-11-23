@@ -1,6 +1,6 @@
 # Speediance FIT Exporter – Benutzerhandbuch
 
-**Version:** 0.1.35-rc.2 (Release Candidate 2)  
+**Version:** 0.1.36-beta (Beta)
 **Plattform:** Windows 10/11  
 **Sprachen der Anwendung:** Deutsch, Englisch  
 **Projektstatus:** Unabhängiges Community-Tool; weder von Speediance noch von Garmin entwickelt oder unterstützt
@@ -19,7 +19,7 @@ Die Anwendung funktioniert auch ohne eine kostenpflichtige GM-Manager-Schnittste
 
 ## 2. Installation und erster Start
 
-1. Lade das RC-Paket `SpeedianceFITExporter-Windows-Setup-0.1.35-rc.2` herunter. Bei GitHub liegt es unter **Actions → Windows installer → erfolgreicher RC-Build → Artifacts**. Bei privater Weitergabe erhältst du die ZIP-Datei vom Anbieter.
+1. Lade das Beta-Paket `SpeedianceFITExporter-Windows-Setup-0.1.36-beta` herunter. Bei GitHub liegt es unter **Actions → Windows installer → erfolgreicher Beta-Build → Artifacts**. Bei privater Weitergabe erhältst du die ZIP-Datei vom Anbieter.
 2. Entpacke die ZIP-Datei. Darin liegt `SpeedianceFITExporter-Setup.exe` sowie dieses Handbuch.
 3. Starte die Setup-Datei und folge dem Installationsassistenten. Die Installation erfolgt für den angemeldeten Windows-Benutzer, ohne Administratorrechte.
 4. Starte das Programm über **Start → Speediance FIT Exporter**.

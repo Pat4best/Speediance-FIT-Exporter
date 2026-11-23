@@ -1,4 +1,4 @@
-"""RC release metadata and symmetric German/English documentation checks.
+"""Release metadata and symmetric German/English documentation checks.
 
 Tests use no network, user account, personal FIT files or Windows APIs.
 """
@@ -7,7 +7,7 @@ import re
 import unittest
 
 ROOT = Path(__file__).resolve().parents[1]
-RC = "0.1.35-rc.2"
+VERSION = "0.1.36-beta"
 LANGUAGES = ("de", "en")
 DOC_NAMES = {
     "README.md", "quick-start.md", "user-guide.md",
@@ -21,7 +21,7 @@ def read(relative):
     return (ROOT / relative).read_text(encoding="utf-8")
 
 
-class RCReleaseChecks(unittest.TestCase):
+class ReleaseMetadataChecks(unittest.TestCase):
     def test_version_and_release_landing_pages_agree(self):
         for path in (
             "app/main.py", "README.md", "CHANGELOG.md",
@@ -30,7 +30,7 @@ class RCReleaseChecks(unittest.TestCase):
             "docs/de/changelog.md", "docs/en/changelog.md",
         ):
             with self.subTest(path=path):
-                self.assertIn(RC, read(path))
+                self.assertIn(VERSION, read(path))
 
     def test_docs_are_mirrored_without_stale_root_documents(self):
         docs_root = ROOT / "docs"
@@ -93,7 +93,8 @@ class RCReleaseChecks(unittest.TestCase):
 
     def test_installer_includes_all_documents_in_both_languages(self):
         script = read("installer.nsi")
-        self.assertIn('VIProductVersion "0.1.35.2"', script)
+        self.assertIn(f'VIAddVersionKey "ProductVersion" "{VERSION}"', script)
+        self.assertIn('VIProductVersion "0.1.36.0"', script)
         for lang in LANGUAGES:
             self.assertIn(f'SetOutPath "$INSTDIR\\docs\\{lang}"', script)
             for filename in DOC_NAMES:
@@ -109,7 +110,7 @@ class RCReleaseChecks(unittest.TestCase):
     def test_actions_artifact_bundles_both_documentation_trees(self):
         workflow = read(".github/workflows/windows-installer.yml")
         self.assertIn(
-            "SpeedianceFITExporter-Windows-Setup-" + RC,
+            "SpeedianceFITExporter-Windows-Setup-" + VERSION,
             workflow,
         )
         self.assertIn("docs/de/", workflow)

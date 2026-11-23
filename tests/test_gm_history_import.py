@@ -178,8 +178,8 @@ class GMHistoryImportTests(unittest.TestCase):
         self.assertEqual(len(values(result, 225)), 27)
         from fitwriter import stamp
         self.assertEqual(values(result, 225)[0][6][1], stamp(GARMIN_START))
-        self.assertEqual(values(result, 225)[0][3][1], 0)  # timed set, not 300 reps
-        self.assertEqual(values(result, 225)[1][3][1], 0)
+        self.assertNotIn(3, values(result, 225)[0])
+        self.assertNotIn(3, values(result, 225)[1])
         for index in (16, 17, 18):
             self.assertEqual(values(result, 225)[index][3][1], 10)
             self.assertAlmostEqual(values(result, 225)[index][4][1] / 16, 20)

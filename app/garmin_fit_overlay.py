@@ -181,10 +181,12 @@ def _encoded_message(local, global_num, fields):
     return bytes(definition + body)
 
 
-def _from_message(chunk, local=15):
+def _from_message(chunk, local=15, *, omit_field=None):
     """Repackage canonical Speediance SET/title bytes using local ID 15."""
     fields = []
     for number, size, typ in chunk["definition"]["fields"]:
+        if number == omit_field:
+            continue
         entry = chunk["offsets"].get(number)
         if entry is None:
             raise GarminOverlayError("Unvollständiger Speediance-SET-Datensatz")
@@ -296,10 +298,31 @@ def overlay_garmin_fit(original, speediance, destination, priorities=None,
             "nicht die erwarteten Übungssätze"
         )
     replace_native_sets = True
-    new_strength = ([_from_message(entry)
-                     for entry in generated if entry["kind"] == "data"
-                     and entry["global"] in (225, 264)]
-                    if replace_native_sets else [])
+    from_history_csv = speediance.get("_set_source") == "gm_manager_history_csv"
+    source_methods = iter(
+        exercise.get("completion_method")
+        for exercise in speediance.get("exercises") or []
+        for _ in exercise.get("sets") or []
+    )
+    new_strength = []
+    actual_reps = 0
+    for entry in generated:
+        if entry["kind"] != "data" or entry["global"] not in (225, 264):
+            continue
+        if entry["global"] == 264:
+            new_strength.append(_from_message(entry))
+            continue
+        method = next(source_methods, None)
+        repetitions = _get_numeric(entry, 3) or 0
+        # History CSV rows already distinguish timed sets by their zero count.
+        timed = not repetitions or (
+            not from_history_csv and method in (0, 2, "0", "2")
+        )
+        # Garmin uses the populated SET fields to display the count or time.
+        # Keep the timestamps for placement even when duration is omitted.
+        new_strength.append(_from_message(entry, omit_field=3 if timed else 0))
+        if not timed:
+            actual_reps += repetitions
 
     native_times = set()
     original_counts = Counter()
@@ -355,29 +378,11 @@ def overlay_garmin_fit(original, speediance, destination, priorities=None,
 
     calories = merged.get("calories")
     summary = merged.get("heart_rate_summary") or {}
-    # The original Garmin strength activity can have a coarse, watch-counted
-    # total_cycles (field 10). We replaced its SETs with Speediance completed
-    # sets, so the session repetition total must not remain at the watch's
-    # old value. For timed/dehn movements completionMethod 0/2, 'reps'
-    # often means seconds and must not be counted as repetitions.
-    actual_reps = 0
-    for exercise in speediance.get("exercises") or []:
-        try:
-            method = exercise.get("completion_method")
-            timed = method is not None and int(method) in (0, 2)
-        except (TypeError, ValueError):
-            timed = False
-        if timed:
-            continue
-        for completed in exercise.get("sets") or []:
-            try:
-                actual_reps += max(0, int(float(completed.get("reps") or 0)))
-            except (TypeError, ValueError, OverflowError):
-                pass
+    # Replace the original watch's cycle total with the exported SET counts.
     actual_reps = min(4294967294, actual_reps)
     # Only update fields controlled by priority (plus Speediance-owned reps).
     session_changes = {
-        10: actual_reps if actual_reps else None,
+        10: actual_reps,
         11: calories,
         16: summary.get("avg"),
         17: summary.get("max"),
@@ -457,7 +462,7 @@ def overlay_garmin_fit(original, speediance, destination, priorities=None,
         elif num == 19 and original_counts[19] == 1:
             # Multi-lap Garmin summaries are distinct real measurements:
             # never replace EACH lap's values with whole-session totals.
-            changes = {10: actual_reps if actual_reps else None,
+            changes = {10: actual_reps,
                        11: calories, 15: summary.get("avg"),
                        16: summary.get("max")}
             if priorities["duration"] == "speediance":
@@ -491,7 +496,7 @@ def overlay_garmin_fit(original, speediance, destination, priorities=None,
             "Export abgebrochen: Die zusammengeführte FIT enthält "
             "nicht die erwartete Anzahl an Übungssätzen"
         )
-    if speediance.get("_set_source") == "gm_manager_history_csv":
+    if from_history_csv:
         # Check decoded final FIT, not just the temporary generated FIT.
         # A plan- or Garmin-only file must never be accepted as a CSV merge.
         planned = [item for exercise in speediance.get("exercises") or []
@@ -504,7 +509,7 @@ def overlay_garmin_fit(original, speediance, destination, priorities=None,
             reps = max(0, min(65534, int(float(given.get("reps") or 0))))
             kg = max(0.0, float(given.get("weight") or 0))
             weight_scaled = min(65534, round(kg * 16))
-            if (_get_numeric(emitted, 3) != reps
+            if (_get_numeric(emitted, 3) != (reps or None)
                     or _get_numeric(emitted, 4) != weight_scaled):
                 raise GarminOverlayError(
                     "Export abgebrochen: CSV-Wiederholungen oder -Gewichte "

@@ -4,6 +4,11 @@
 
 Wichtige Änderungen in absteigender Reihenfolge. Frühere Details der Beta-Entwicklung stehen in [../../archive/Entwicklungshistorie.md](../../archive/Entwicklungshistorie.md).
 
+## 0.1.36-beta – Speediance-Garmin-Abgleich (23. November 2026)
+
+- Wiederholungssätze werden mit Wiederholungszahl und Zeitsätze mit Satzdauer in die zusammengeführte FIT exportiert.
+- Die Weiterentwicklung läuft wieder als Beta. Ein neuer Release Candidate folgt nach erfolgreicher Abnahme.
+
 ## 0.1.35-rc.2 – Vollständig zweisprachige Dokumentation (18. November 2026)
 
 **Reines Dokumentations-/Paketierungsupdate; keine Änderung an FIT-Merge oder API-Verhalten.**
